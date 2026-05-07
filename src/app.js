@@ -89,10 +89,8 @@ function handleFileUpload(file) {
 }
 
 function parseExcelData(data) {
-    // Asume la primera fila son headers. Buscamos Código y Nombre.
     if (data.length < 2) return;
 
-    // Simplificación: asume que la col 0 es código y col 1 es nombre, o busca por texto
     let headers = data[0].map(h => (h || '').toString().toLowerCase().trim());
     let codeIdx = headers.findIndex(h => h.includes('cod') || h.includes('código'));
     let nameIdx = headers.findIndex(h => h.includes('nom') || h.includes('nombre') || h.includes('desc'));
@@ -100,16 +98,28 @@ function parseExcelData(data) {
     if (codeIdx === -1) codeIdx = 0;
     if (nameIdx === -1) nameIdx = 1;
 
-    let newProducts = [];
+    let addedCount = 0;
+    let updatedCount = 0;
+
     for (let i = 1; i < data.length; i++) {
         const row = data[i];
         if (!row || row.length === 0) continue;
 
-        const code = row[codeIdx] ? row[codeIdx].toString() : `PROD-${i}`;
-        const name = row[nameIdx] ? row[nameIdx].toString() : `Producto ${i}`;
+        const codeStr = row[codeIdx] ? row[codeIdx].toString().trim() : '';
+        const nameStr = row[nameIdx] ? row[nameIdx].toString().trim() : '';
 
-        if (code || name) {
-            newProducts.push({
+        if (!codeStr && !nameStr) continue;
+
+        const code = codeStr || `PROD-${generateId().substring(0,4).toUpperCase()}`;
+        const name = nameStr || `Producto Sin Nombre`;
+
+        const existingIdx = state.products.findIndex(p => p.code === code);
+
+        if (existingIdx >= 0) {
+            state.products[existingIdx].name = name;
+            updatedCount++;
+        } else {
+            state.products.push({
                 id: generateId(),
                 code: code,
                 name: name,
@@ -120,26 +130,62 @@ function parseExcelData(data) {
                 weight: 0,
                 includedInBEP: true
             });
+            addedCount++;
         }
     }
 
-    if (newProducts.length > 0) {
-        // Combinar o reemplazar. Aquí optamos por añadir/reemplazar basándonos en código para evitar duplicados.
-        newProducts.forEach(newP => {
-            const existingIdx = state.products.findIndex(p => p.code === newP.code);
-            if (existingIdx >= 0) {
-                // Actualiza nombre pero mantiene costos
-                state.products[existingIdx].name = newP.name;
-            } else {
-                state.products.push(newP);
-            }
-        });
+    if (addedCount > 0 || updatedCount > 0) {
         renderApp();
-        alert(`${newProducts.length} productos procesados.`);
+        alert(`Procesados: ${addedCount} nuevos, ${updatedCount} actualizados.`);
     } else {
-        alert("No se encontraron datos de productos en el archivo.");
+        alert("No se encontraron datos válidos de productos en el archivo.");
     }
 }
+
+app.downloadTemplate = () => {
+    const ws_data = [
+        ["Código", "Nombre"],
+        ["PR001", "Ejemplo Producto 1"],
+        ["PR002", "Ejemplo Producto 2"]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+    XLSX.writeFile(wb, "Plantilla_Productos.xlsx");
+};
+
+app.addManualProduct = () => {
+    const codeInput = document.getElementById('manualCode');
+    const nameInput = document.getElementById('manualName');
+    const code = codeInput.value.trim();
+    const name = nameInput.value.trim();
+
+    if (!code || !name) {
+        alert("Por favor, ingrese un Código y un Nombre.");
+        return;
+    }
+
+    if (state.products.find(p => p.code === code)) {
+        alert("Ya existe un producto con este código.");
+        return;
+    }
+
+    state.products.push({
+        id: generateId(),
+        code: code,
+        name: name,
+        cv: [],
+        cf: [],
+        gv: [],
+        pvp: 0,
+        weight: 0,
+        includedInBEP: true
+    });
+
+    codeInput.value = '';
+    nameInput.value = '';
+    renderApp();
+};
 
 // Render Core
 function renderApp() {
@@ -185,9 +231,9 @@ function renderGlobalFixedExpenses() {
         total += e.amount;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${e.desc}</td>
-            <td>${formatMoney(e.amount)}</td>
-            <td>
+            <td data-label="Descripción">${e.desc}</td>
+            <td data-label="Monto">${formatMoney(e.amount)}</td>
+            <td data-label="Acción">
                 <button class="btn-danger" onclick="app.removeGlobalFixedExpense('${e.id}')">Eliminar</button>
             </td>
         `;
@@ -248,13 +294,13 @@ function renderBEPModule() {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><input type="checkbox" ${p.includedInBEP ? 'checked' : ''} onchange="app.toggleProductBEP('${p.id}', this.checked)"></td>
-            <td>${p.name}</td>
-            <td>${formatMoney(tCV)}</td>
-            <td><input type="number" value="${p.pvp || ''}" onchange="app.updateProductBEPValue('${p.id}', 'pvp', this.value)" placeholder="PVP" style="width: 80px;" min="0"></td>
-            <td><input type="number" value="${(p.weight * 100) || ''}" onchange="app.updateProductBEPValue('${p.id}', 'weight', this.value)" placeholder="%" style="width: 80px;" min="0" max="100"></td>
-            <td>${formatMoney(margin)}</td>
-            <td>${formatMoney(weightedMargin)}</td>
+            <td data-label="Incluir"><input type="checkbox" ${p.includedInBEP ? 'checked' : ''} onchange="app.toggleProductBEP('${p.id}', this.checked)"></td>
+            <td data-label="Producto">${p.name}</td>
+            <td data-label="Costo Var. Unitario">${formatMoney(tCV)}</td>
+            <td data-label="PVP ($)"><input type="number" value="${p.pvp || ''}" onchange="app.updateProductBEPValue('${p.id}', 'pvp', this.value)" placeholder="PVP" style="width: 80px;" min="0"></td>
+            <td data-label="Ponderación (%)"><input type="number" value="${(p.weight * 100) || ''}" onchange="app.updateProductBEPValue('${p.id}', 'weight', this.value)" placeholder="%" style="width: 80px;" min="0" max="100"></td>
+            <td data-label="Margen Contribución Unitario">${formatMoney(margin)}</td>
+            <td data-label="Margen Ponderado">${formatMoney(weightedMargin)}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -350,10 +396,10 @@ function renderProjection() {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${p.name}</td>
-            <td>${productUnits.toFixed(2)}</td>
-            <td>${formatMoney(revenue)}</td>
-            <td>${formatMoney(unitAcquisitionCost)}</td>
+            <td data-label="Producto">${p.name}</td>
+            <td data-label="Unidades">${productUnits.toFixed(2)}</td>
+            <td data-label="Ingresos">${formatMoney(revenue)}</td>
+            <td data-label="Costo de Adquisición Unit.">${formatMoney(unitAcquisitionCost)}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -404,9 +450,9 @@ function renderProductsList() {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${sanitizeHTML(p.code)}</td>
-            <td>${sanitizeHTML(p.name)}</td>
-            <td>
+            <td data-label="Código">${sanitizeHTML(p.code)}</td>
+            <td data-label="Nombre">${sanitizeHTML(p.name)}</td>
+            <td data-label="Acción">
                 <button class="btn-sm" onclick="app.selectProduct('${p.id}')">Detalles</button>
                 <button class="btn-danger" onclick="app.deleteProduct('${p.id}')">Eliminar</button>
             </td>
@@ -415,13 +461,20 @@ function renderProductsList() {
     });
 
     const summaryPanel = document.getElementById('portfolioSummary');
+    const emptyState = document.getElementById('emptyState');
+    const productsTable = document.getElementById('productsTable');
+
     if (state.products.length > 0) {
         summaryPanel.classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        productsTable.classList.remove('hidden');
         document.getElementById('portTotalCV').textContent = portCV.toFixed(2);
         document.getElementById('portTotalCF').textContent = portCF.toFixed(2);
         document.getElementById('portTotalGV').textContent = portGV.toFixed(2);
     } else {
         summaryPanel.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        productsTable.classList.add('hidden');
     }
 }
 

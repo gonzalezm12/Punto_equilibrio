@@ -32,14 +32,30 @@
                 <div class="card">
                     <h2>Gestión de Productos</h2>
 
-                    <div class="dropzone" id="excelDropzone">
-                        <p>Arrastra y suelta tu archivo Excel (.xlsx/.csv) aquí o haz clic para subir.</p>
-                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" hidden>
+                    <div class="import-actions">
+                        <div class="dropzone" id="excelDropzone">
+                            <p>Arrastra y suelta tu archivo Excel (.xlsx/.csv) aquí o haz clic para subir.</p>
+                            <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" hidden>
+                        </div>
+                        <div class="manual-actions">
+                            <button class="btn-action" onclick="app.downloadTemplate()">Descargar Plantilla Excel</button>
+                            <div class="manual-product-form glass-panel mt-3">
+                                <h4>Agregar Manualmente</h4>
+                                <div class="form-group">
+                                    <input type="text" id="manualCode" placeholder="Código">
+                                    <input type="text" id="manualName" placeholder="Nombre">
+                                    <button class="btn-action" onclick="app.addManualProduct()">Agregar</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="product-management-grid">
+                    <div class="product-management-grid mt-3">
                         <div class="product-list-container">
                             <h3>Lista de Productos</h3>
+                            <div id="emptyState" class="empty-state hidden">
+                                <p>No hay productos cargados aún. Usa el formulario o sube un archivo Excel.</p>
+                            </div>
                             <table class="data-table" id="productsTable">
                                 <thead>
                                     <tr>
@@ -64,19 +80,16 @@
                             <h3>Detalle del Producto <span id="selectedProductName"></span></h3>
                             <div id="productDetailsForm" class="hidden">
                                 <div class="cost-section">
-                                    <h4>Costos Variables</h4>
+                                    <h4>Costos Variables <button class="btn-icon" title="Agregar Costo Variable" onclick="app.addCostRow('cvContainer')">+</button></h4>
                                     <div id="cvContainer"></div>
-                                    <button class="btn-sm" onclick="app.addCostRow('cvContainer')">+ Agregar</button>
                                 </div>
                                 <div class="cost-section">
-                                    <h4>Costos Fijos</h4>
+                                    <h4>Costos Fijos <button class="btn-icon" title="Agregar Costo Fijo" onclick="app.addCostRow('cfContainer')">+</button></h4>
                                     <div id="cfContainer"></div>
-                                    <button class="btn-sm" onclick="app.addCostRow('cfContainer')">+ Agregar</button>
                                 </div>
                                 <div class="cost-section">
-                                    <h4>Gastos Variables</h4>
+                                    <h4>Gastos Variables <button class="btn-icon" title="Agregar Gasto Variable" onclick="app.addCostRow('gvContainer')">+</button></h4>
                                     <div id="gvContainer"></div>
-                                    <button class="btn-sm" onclick="app.addCostRow('gvContainer')">+ Agregar</button>
                                 </div>
 
                                 <div class="totals-summary mt-3">
