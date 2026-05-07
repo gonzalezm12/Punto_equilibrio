@@ -44,6 +44,7 @@
                                 <div class="form-group">
                                     <input type="text" id="manualCode" placeholder="Código">
                                     <input type="text" id="manualName" placeholder="Nombre">
+                                    <input type="number" id="manualPVP" placeholder="Precio (PVP)" min="0" step="0.01" style="width: 120px;">
                                     <button class="btn-action" onclick="app.addManualProduct()">Agregar</button>
                                 </div>
                             </div>
@@ -150,11 +151,14 @@
                             <tr>
                                 <th>Incluir</th>
                                 <th>Producto</th>
-                                <th>Costo Var. Unitario</th>
+                                <th>Costo Var.</th>
+                                <th>Gasto Var.</th>
+                                <th>Total Var.</th>
                                 <th>PVP ($)</th>
                                 <th>Ponderación (%)</th>
-                                <th>Margen Contribución Unitario</th>
-                                <th>Margen Ponderado</th>
+                                <th>Margen Unit.</th>
+                                <th>PE (Unidades)</th>
+                                <th>PE ($)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -225,7 +229,9 @@
                                     <th>Producto</th>
                                     <th>Unidades</th>
                                     <th>Ingresos</th>
-                                    <th>Costo de Adquisición Unit.</th>
+                                    <th>Total Var.</th>
+                                    <th>Margen Contrib. Total</th>
+                                    <th>Estado</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -233,6 +239,26 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <div class="summary-card glass-panel mt-3 text-center">
+                        <button class="btn-action mt-2 mb-3" onclick="app.runAudit()">Ejecutar Auditoría Interna</button>
+                        <h3 class="mb-3">Resultados Generales de la Proyección</h3>
+                        <div class="results-grid">
+                            <div class="result-item important">
+                                <label>Utilidad Neta Global:</label>
+                                <span class="highlight" id="finalNetProfit">$0.00</span>
+                            </div>
+                            <div class="result-item important">
+                                <label>ROI Total:</label>
+                                <span class="highlight" id="finalROI">0.00%</span>
+                            </div>
+                            <div class="result-item important">
+                                <label>Rentabilidad Total:</label>
+                                <span class="highlight" id="finalProfitability">0.00%</span>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </section>
         </main>
