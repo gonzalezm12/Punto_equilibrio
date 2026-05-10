@@ -75,99 +75,165 @@ function handleFileUpload(file) {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            // Leer Hoja 1: Productos
+            const sheet1Name = workbook.SheetNames[0];
+            const productsData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet1Name], { header: 1 });
+            
+            // Leer Hoja 2: Detalle_Costos (si existe)
+            let detailsData = null;
+            if (workbook.SheetNames.length > 1) {
+                const sheet2Name = workbook.SheetNames.find(n => n.toLowerCase().includes('detalle') || n.toLowerCase().includes('costo'));
+                if (sheet2Name) {
+                    detailsData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet2Name], { header: 1 });
+                }
+            }
 
-            parseExcelData(jsonData);
+            parseExcelData(productsData, detailsData);
         } catch (error) {
             console.error("Error reading file:", error);
-            alert("Error al procesar el archivo. Asegúrate de que es un Excel o CSV válido.");
+            alert("Error al procesar el archivo. Asegúrate de usar la plantilla oficial.");
         }
     };
     reader.readAsArrayBuffer(file);
 }
 
-function parseExcelData(data) {
-    if (data.length < 2) return;
+function parseExcelData(productsData, detailsData) {
+    if (!productsData || productsData.length < 2) return;
 
-    let headers = data[0].map(h => (h || '').toString().toLowerCase().trim());
-    let codeIdx = headers.findIndex(h => h.includes('cod') || h.includes('código'));
-    let nameIdx = headers.findIndex(h => h.includes('nom') || h.includes('nombre') || h.includes('desc'));
-    let pvpIdx = headers.findIndex(h => h.includes('precio') || h.includes('pvp'));
-    let cvIdx = headers.findIndex(h => h.includes('costo v'));
-    let cfIdx = headers.findIndex(h => h.includes('costo f'));
-    let gvIdx = headers.findIndex(h => h.includes('gasto v'));
+    // Función para limpiar texto (quitar tildes, espacios y minúsculas)
+    const clean = (str) => (str || '').toString().toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-    if (codeIdx === -1) codeIdx = 0;
-    if (nameIdx === -1) nameIdx = 1;
+    // --- 1. Procesar Productos (Hoja 1) ---
+    let headerRowIdx = -1;
+    for (let i = 0; i < productsData.length; i++) {
+        const row = productsData[i].map(c => clean(c));
+        if (row.some(c => c.includes('cod')) || row.some(c => c.includes('nom'))) {
+            headerRowIdx = i;
+            break;
+        }
+    }
+
+    if (headerRowIdx === -1) {
+        alert("No se encontró la fila de cabeceras en la hoja de Productos.");
+        return;
+    }
+
+    const headers = productsData[headerRowIdx].map(h => clean(h));
+    const codeIdx = headers.findIndex(h => h.includes('cod'));
+    const nameIdx = headers.findIndex(h => h.includes('nom'));
+    const pvpIdx = headers.findIndex(h => h.includes('precio') || h.includes('pvp'));
 
     let addedCount = 0;
     let updatedCount = 0;
 
-    for (let i = 1; i < data.length; i++) {
-        const row = data[i];
+    for (let i = headerRowIdx + 1; i < productsData.length; i++) {
+        const row = productsData[i];
         if (!row || row.length === 0) continue;
 
-        const codeStr = row[codeIdx] ? row[codeIdx].toString().trim() : '';
-        const nameStr = row[nameIdx] ? row[nameIdx].toString().trim() : '';
+        const rawCode = codeIdx !== -1 && row[codeIdx] ? row[codeIdx].toString().trim() : '';
+        const nameStr = nameIdx !== -1 && row[nameIdx] ? row[nameIdx].toString().trim() : '';
         const pvp = pvpIdx !== -1 ? parseFloat(row[pvpIdx]) || 0 : 0;
-        const cv = cvIdx !== -1 ? parseFloat(row[cvIdx]) || 0 : 0;
-        const cf = cfIdx !== -1 ? parseFloat(row[cfIdx]) || 0 : 0;
-        const gv = gvIdx !== -1 ? parseFloat(row[gvIdx]) || 0 : 0;
 
-        if (!codeStr && !nameStr) continue;
+        if (!rawCode && !nameStr) continue;
 
-        const code = codeStr || `PROD-${generateId().substring(0,4).toUpperCase()}`;
+        const code = rawCode.toUpperCase() || `PROD-${generateId().substring(0,4).toUpperCase()}`;
         const name = nameStr || `Producto Sin Nombre`;
 
-        const existingIdx = state.products.findIndex(p => p.code === code);
-
-        let targetProduct;
-        if (existingIdx >= 0) {
-            targetProduct = state.products[existingIdx];
+        let targetProduct = state.products.find(p => (p.code || '').toUpperCase() === code);
+        
+        if (targetProduct) {
             targetProduct.name = name;
+            targetProduct.cv = []; targetProduct.cf = []; targetProduct.gv = [];
             updatedCount++;
         } else {
             targetProduct = {
                 id: generateId(),
                 code: code,
                 name: name,
-                cv: [],
-                cf: [],
-                gv: [],
+                cv: [], cf: [], gv: [],
                 pvp: pvp,
                 weight: 0,
+                projectedUnits: 0,
                 includedInBEP: true
             };
             state.products.push(targetProduct);
             addedCount++;
         }
-
-        if (pvp > 0 && targetProduct.pvp === 0) targetProduct.pvp = pvp;
-        if (cv > 0 && targetProduct.cv.length === 0) targetProduct.cv.push({ desc: 'Importado', amount: cv });
-        if (cf > 0 && targetProduct.cf.length === 0) targetProduct.cf.push({ desc: 'Importado', amount: cf });
-        if (gv > 0 && targetProduct.gv.length === 0) targetProduct.gv.push({ desc: 'Importado', amount: gv });
+        if (pvp > 0) targetProduct.pvp = pvp;
     }
 
-    if (addedCount > 0 || updatedCount > 0) {
-        renderApp();
-        alert(`Procesados: ${addedCount} nuevos, ${updatedCount} actualizados.`);
-    } else {
-        alert("No se encontraron datos válidos de productos en el archivo.");
+    // --- 2. Procesar Detalles (Hoja 2) ---
+    if (detailsData && detailsData.length > 1) {
+        let detHeaderIdx = -1;
+        for (let i = 0; i < detailsData.length; i++) {
+            const row = detailsData[i].map(c => clean(c));
+            if (row.some(c => c.includes('cod')) || row.some(c => c.includes('tipo'))) {
+                detHeaderIdx = i;
+                break;
+            }
+        }
+
+        if (detHeaderIdx !== -1) {
+            const detHeaders = detailsData[detHeaderIdx].map(h => clean(h));
+            const dCodeIdx = detHeaders.findIndex(h => h.includes('cod'));
+            const dTypeIdx = detHeaders.findIndex(h => h.includes('tipo'));
+            const dDescIdx = detHeaders.findIndex(h => h.includes('desc'));
+            const dAmountIdx = detHeaders.findIndex(h => h.includes('monto') || h.includes('valor'));
+
+            for (let i = detHeaderIdx + 1; i < detailsData.length; i++) {
+                const row = detailsData[i];
+                if (!row || row.length < 2) continue;
+
+                const rawCode = (row[dCodeIdx] || '').toString().trim().toUpperCase();
+                const type = clean(row[dTypeIdx]);
+                const desc = (row[dDescIdx] || 'Importado').toString().trim();
+                const amount = parseFloat(row[dAmountIdx]) || 0;
+
+                const product = state.products.find(p => p.code.toUpperCase() === rawCode);
+                if (product && amount > 0) {
+                    if (type === 'cv' || (type.includes('costo') && type.includes('variable'))) {
+                        product.cv.push({ desc, amount });
+                    } else if (type === 'cf' || type.includes('fijo')) {
+                        product.cf.push({ desc, amount });
+                    } else if (type === 'gv' || (type.includes('gasto') && type.includes('variable'))) {
+                        product.gv.push({ desc, amount });
+                    }
+                }
+            }
+        }
     }
+
+    renderApp();
+    alert(`Importación completada: ${addedCount} nuevos, ${updatedCount} actualizados.`);
 }
 
 app.downloadTemplate = () => {
-    const ws_data = [
-        ["Código", "Nombre", "Precio de Venta", "Costo Variable", "Costo Fijo", "Gasto Variable"],
-        ["PR001", "Ejemplo Producto 1", 150, 50, 1000, 10],
-        ["PR002", "Ejemplo Producto 2", 200, 80, 500, 15]
+    // Hoja 1: Productos
+    const ws_products_data = [
+        ["Código", "Nombre", "Precio de Venta"],
+        ["PR001", "Producto de Ejemplo A", 100.00],
+        ["PR002", "Producto de Ejemplo B", 200.00]
     ];
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const ws_products = XLSX.utils.aoa_to_sheet(ws_products_data);
+
+    // Hoja 2: Detalle_Costos
+    const ws_details_data = [
+        ["Código Producto", "Tipo (CV / CF / GV)", "Descripción", "Monto"],
+        ["PR001", "CV", "Tela de Algodón", 25.00],
+        ["PR001", "CV", "Hilos y Botones", 5.50],
+        ["PR001", "CF", "Etiqueta Marca", 1.20],
+        ["PR002", "CV", "Cuero Sintético", 50.00],
+        ["PR002", "GV", "Comisión de Marketplace", 15.00]
+    ];
+    const ws_details = XLSX.utils.aoa_to_sheet(ws_details_data);
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
-    XLSX.writeFile(wb, "Plantilla_Productos.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws_products, "Productos");
+    XLSX.utils.book_append_sheet(wb, ws_details, "Detalle_Costos");
+
+    XLSX.writeFile(wb, "Plantilla_Avanzada_Punto_Equilibrio.xlsx");
 };
 
 app.addManualProduct = () => {
@@ -197,6 +263,7 @@ app.addManualProduct = () => {
         gv: [],
         pvp: pvp,
         weight: 0,
+        projectedUnits: 0,
         includedInBEP: true
     });
 
@@ -212,7 +279,7 @@ function renderApp() {
     renderProductDetails();
     renderGlobalFixedExpenses();
     renderBEPModule();
-    renderProjection();
+    app.renderProjection();
 }
 
 // --- Module 2: Global Fixed Expenses ---
@@ -285,6 +352,7 @@ app.updateProductBEPValue = (id, field, value) => {
 
 function renderBEPModule() {
     const tbody = document.querySelector('#pepTable tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     let totalFixedProductCosts = 0;
@@ -294,7 +362,7 @@ function renderBEPModule() {
     // Calcular Total Costos/Gastos Fijos (Globales + Productos incluidos)
     const tGFG = state.globalFixedExpenses.reduce((acc, e) => acc + e.amount, 0);
 
-    // First Pass: Calculate total fixed costs and weighted margin to find global BEP
+    // Primera pasada: Calcular costos fijos totales y margen ponderado total
     state.products.forEach(p => {
         const tCF = p.cf.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
         if (p.includedInBEP) {
@@ -310,20 +378,21 @@ function renderBEPModule() {
 
     const totalFixedCosts = totalFixedProductCosts + tGFG;
 
-    // Calcular Punto de Equilibrio Global
+    // Calcular Punto de Equilibrio Global en Unidades
     let globalBepUnits = 0;
     if (totalWeightedMargin > 0) {
         globalBepUnits = totalFixedCosts / totalWeightedMargin;
     }
 
-    // Second Pass: Render Table and Calculate Per-Product BEP
     let globalBepMoney = 0;
 
+    // Segunda pasada: Renderizar tabla y calcular BEP por producto
     state.products.forEach(p => {
         const tCV = p.cv.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
         const tGV = p.gv.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
         const totalVariables = tCV + tGV;
         const margin = p.pvp - totalVariables;
+        const weightedMarginPerProduct = margin * p.weight;
 
         let bepUnidades = 0;
         let bepDinero = 0;
@@ -342,232 +411,329 @@ function renderBEPModule() {
             <td data-label="Gasto Var.">${formatMoney(tGV)}</td>
             <td data-label="Total Var.">${formatMoney(totalVariables)}</td>
             <td data-label="PVP ($)"><input type="number" value="${p.pvp || ''}" onchange="app.updateProductBEPValue('${p.id}', 'pvp', this.value)" placeholder="PVP" style="width: 80px;" min="0"></td>
+            <td data-label="Margen Contrib." class="font-bold ${margin < 0 ? 'text-red-500' : ''}">${formatMoney(margin)}</td>
             <td data-label="Ponderación (%)"><input type="number" value="${(p.weight * 100) || ''}" onchange="app.updateProductBEPValue('${p.id}', 'weight', this.value)" placeholder="%" style="width: 80px;" min="0" max="100"></td>
-            <td data-label="Margen Unit.">${formatMoney(margin)}</td>
+            <td data-label="M. Contrib. Pond." class="font-bold text-blue-500">${formatMoney(weightedMarginPerProduct)}</td>
             <td data-label="PE (Unidades)">${bepUnidades.toFixed(2)}</td>
             <td data-label="PE ($)">${formatMoney(bepDinero)}</td>
         `;
         tbody.appendChild(tr);
     });
 
-    // Actualizar UI
+    // Actualizar Resúmenes en la UI
     document.getElementById('resTotalFixed').textContent = formatMoney(totalFixedCosts);
-
     const weightElem = document.getElementById('resTotalWeight');
     weightElem.textContent = formatPercent(totalWeight);
+    
     if (Math.abs(totalWeight - 1.0) > 0.001 && totalWeight > 0) {
-        weightElem.style.color = '#ff6b6b'; // Red if not exactly 100%
-        weightElem.title = 'La ponderación total debería ser 100%';
+        weightElem.style.color = '#ff6b6b';
     } else {
         weightElem.style.color = '';
-        weightElem.title = '';
     }
 
-    document.getElementById('resTotalWeightedMargin').textContent = formatMoney(totalWeightedMargin);
-    document.getElementById('resBEPUnits').textContent = globalBepUnits.toFixed(2);
-    document.getElementById('resBEPMoney').textContent = formatMoney(globalBepMoney);
+    document.getElementById('resTotalWeightedMargin').textContent = formatMoney(totalWeightedMargin || 0);
+    document.getElementById('resBEPUnits').textContent = (globalBepUnits || 0).toFixed(2);
+    document.getElementById('resBEPMoney').textContent = formatMoney(globalBepMoney || 0);
 }
 
-        const margin = p.pvp - tCV - tGV;
-        const weightedMargin = margin * p.weight;
-
-        if (p.includedInBEP) {
-            totalWeight += p.weight;
-            totalWeightedMargin += weightedMargin;
-        }
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td data-label="Incluir"><input type="checkbox" ${p.includedInBEP ? 'checked' : ''} onchange="app.toggleProductBEP('${p.id}', this.checked)"></td>
-            <td data-label="Producto">${p.name}</td>
-            <td data-label="Costo Var. Unitario">${formatMoney(tCV)}</td>
-            <td data-label="PVP ($)"><input type="number" value="${p.pvp || ''}" onchange="app.updateProductBEPValue('${p.id}', 'pvp', this.value)" placeholder="PVP" style="width: 80px;" min="0"></td>
-            <td data-label="Ponderación (%)"><input type="number" value="${(p.weight * 100) || ''}" onchange="app.updateProductBEPValue('${p.id}', 'weight', this.value)" placeholder="%" style="width: 80px;" min="0" max="100"></td>
-            <td data-label="Margen Contribución Unitario">${formatMoney(margin)}</td>
-            <td data-label="Margen Ponderado">${formatMoney(weightedMargin)}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-
-    // Calcular Total Costos/Gastos Fijos (Globales + Productos incluidos)
-    const tGFG = state.globalFixedExpenses.reduce((acc, e) => acc + e.amount, 0);
-    const totalFixedCosts = totalFixedProductCosts + tGFG;
-
-    // Calcular Punto de Equilibrio
-    let bepUnits = 0;
-    if (totalWeightedMargin > 0) {
-        bepUnits = totalFixedCosts / totalWeightedMargin;
-    }
-
-    // Calcular PE en Dinero (mezcla de ventas)
-    let bepMoney = 0;
-    state.products.filter(p => p.includedInBEP).forEach(p => {
-        const unitsForProduct = bepUnits * p.weight;
-        bepMoney += unitsForProduct * p.pvp;
-    });
-
-    // Actualizar UI
-    document.getElementById('resTotalFixed').textContent = formatMoney(totalFixedCosts);
-
-    const weightElem = document.getElementById('resTotalWeight');
-    weightElem.textContent = formatPercent(totalWeight);
-    if (Math.abs(totalWeight - 1.0) > 0.001 && totalWeight > 0) {
-        weightElem.style.color = '#ff6b6b'; // Red if not exactly 100%
-        weightElem.title = 'La ponderación total debería ser 100%';
-    } else {
-        weightElem.style.color = '';
-        weightElem.title = '';
-    }
-
-    document.getElementById('resTotalWeightedMargin').textContent = formatMoney(totalWeightedMargin);
-    document.getElementById('resBEPUnits').textContent = bepUnits.toFixed(2);
-    document.getElementById('resBEPMoney').textContent = formatMoney(bepMoney);
-}
 
 // --- Module 4: Projection ---
-app.calculateProjection = () => {
-    const unitsInput = document.getElementById('projUnits');
-    state.projectionUnits = parseFloat(unitsInput.value) || 0;
-    renderProjection();
+app.updateProductProjection = (id, value) => {
+    const product = state.products.find(p => p.id === id);
+    if (product) {
+        product.projectedUnits = parseFloat(value) || 0;
+        app.renderProjection();
+    }
 };
 
-function renderProjection() {
-    const units = state.projectionUnits;
+app.renderProjection = function() {
+    const inputBody = document.getElementById('projInputBody');
+    const resultBody = document.getElementById('projResultBody');
+    if (!inputBody || !resultBody) return;
+
+    inputBody.innerHTML = '';
+    resultBody.innerHTML = '';
+
     const includedProducts = state.products.filter(p => p.includedInBEP);
+    const globalFixed = state.globalFixedExpenses.reduce((acc, e) => acc + (parseFloat(e.amount) || 0), 0);
 
     let totalRevenue = 0;
     let totalCV = 0;
     let totalGV = 0;
     let totalCF = 0;
-    let totalAcquisitionCosts = 0;
+    let totalInvestment = 0;
+    let totalProfit = 0;
 
-    const tGFG = state.globalFixedExpenses.reduce((acc, e) => acc + e.amount, 0);
-
-    const tbody = document.querySelector('#projProductTable tbody');
-    tbody.innerHTML = '';
-
-    // Obtener BEP Global y por producto para calcular el estado
+    // Calcular BEP Global para referencias
     let globalBepUnits = 0;
     let totalWeightedMargin = 0;
-    let totalFixedCosts = tGFG;
+    let totalFixedCostsBase = globalFixed;
 
     includedProducts.forEach(p => {
         const tCF = p.cf.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
         const tCV = p.cv.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
         const tGV = p.gv.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
-        totalFixedCosts += tCF;
-        totalWeightedMargin += (p.pvp - tCV - tGV) * p.weight;
+        totalFixedCostsBase += tCF;
+        totalWeightedMargin += (p.pvp - tCV - tGV) * (p.weight || 0);
     });
 
     if (totalWeightedMargin > 0) {
-        globalBepUnits = totalFixedCosts / totalWeightedMargin;
+        globalBepUnits = totalFixedCostsBase / totalWeightedMargin;
     }
 
     includedProducts.forEach(p => {
-        const productUnits = units * p.weight;
-
+        const productUnits = p.projectedUnits || 0;
         const unitCV = p.cv.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
-        const unitCF = p.cf.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
         const unitGV = p.gv.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
-
+        const unitCF = p.cf.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+        
+        // Cálculos Individuales con Alícuota basada en PE
+        const unitMargin = p.pvp - unitCV - unitGV;
+        const bepUnitsPerProduct = globalBepUnits * (p.weight || 0);
+        
+        // La Alícuota es lo que el producto debe cubrir para llegar al PE
+        // (PE del producto * Margen de Contribución)
+        const targetFixedCoverage = bepUnitsPerProduct * unitMargin;
+        
         const revenue = productUnits * p.pvp;
         const cv = productUnits * unitCV;
         const gv = productUnits * unitGV;
-        const cf = unitCF;
+        const cf = unitCF; // Costo fijo específico del producto
+        const aliquotGF = targetFixedCoverage - unitCF; // Diferencia para cubrir la cuota de fijos globales
+        
+        const investment = cv + gv + cf + aliquotGF;
+        const profitability = revenue - investment;
+        const roi = investment > 0 ? (profitability / investment) * 100 : 0;
+        const margin = revenue > 0 ? (profitability / revenue) * 100 : 0;
+        const acquisitionCost = productUnits > 0 ? (investment / productUnits) : (unitCV + unitGV + (targetFixedCoverage / (bepUnitsPerProduct || 1)));
 
-        const unitTotalVar = unitCV + unitGV;
-        const productMarginTotal = (p.pvp - unitTotalVar) * productUnits;
-
+        // Acumuladores Globales
         totalRevenue += revenue;
         totalCV += cv;
         totalGV += gv;
         totalCF += cf;
+        totalInvestment += investment;
+        totalProfit += profitability;
 
+        // Renderizar fila de ENTRADA
         const bepUnidades = globalBepUnits * p.weight;
-        let statusHtml = '';
-        if (productUnits >= bepUnidades && bepUnidades > 0) {
-            statusHtml = `<span class="badge badge-success">Equilibrado</span>`;
-        } else if (bepUnidades > 0) {
-            statusHtml = `<span class="badge badge-danger">Pérdida</span>`;
-        } else {
-            statusHtml = `<span class="badge badge-warning">Sin BEP</span>`;
+        let statusHtml = '<span class="status-badge status-none">Sin Meta</span>';
+        if (productUnits > 0) {
+            if (productUnits >= bepUnidades) {
+                statusHtml = '<span class="status-badge status-success">Meta Alcanzada</span>';
+            } else {
+                statusHtml = '<span class="status-badge status-danger">Bajo Equilibrio</span>';
+            }
         }
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
+        const inputTr = document.createElement('tr');
+        inputTr.innerHTML = `
             <td data-label="Producto">${p.name}</td>
-            <td data-label="Unidades">${productUnits.toFixed(2)}</td>
-            <td data-label="Ingresos">${formatMoney(revenue)}</td>
-            <td data-label="Total Var.">${formatMoney(unitTotalVar)}</td>
-            <td data-label="Margen Contrib. Total">${formatMoney(productMarginTotal)}</td>
+            <td data-label="PVP ($)">${formatMoney(p.pvp || 0)}</td>
+            <td data-label="PE Referencia" class="font-bold text-blue-500">${(bepUnidades || 0).toFixed(2)}</td>
+            <td data-label="Unidades Proyectadas">
+                <input type="number" value="${p.projectedUnits || ''}" 
+                       onchange="app.updateProductProjection('${p.id}', this.value)" 
+                       placeholder="0" class="input-small" style="width: 80px;" min="0">
+            </td>
             <td data-label="Estado">${statusHtml}</td>
         `;
-        tbody.appendChild(tr);
-    });
+        inputBody.appendChild(inputTr);
 
-    const margin = totalRevenue - totalCV - totalGV;
-    const investment = totalCV + totalGV + totalCF + tGFG;
-    const profit = margin - totalCF - tGFG;
-    const roi = investment > 0 ? (profit / investment) * 100 : 0;
-    const profitability = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
-
-    document.getElementById('projRevenue').textContent = formatMoney(totalRevenue);
-    document.getElementById('projCV').textContent = formatMoney(totalCV);
-    document.getElementById('projGV').textContent = formatMoney(totalGV);
-    document.getElementById('projMargin').textContent = formatMoney(margin);
-    document.getElementById('projCFA').textContent = formatMoney(totalCF);
-    document.getElementById('projGFG').textContent = formatMoney(tGFG);
-    document.getElementById('projInvestment').textContent = formatMoney(investment);
-
-    const profitElem = document.getElementById('projProfit');
-    profitElem.textContent = formatMoney(profit);
-    profitElem.style.color = profit >= 0 ? 'var(--accent-hover)' : '#ff6b6b';
-
-    const roiElem = document.getElementById('projROI');
-    roiElem.textContent = roi.toFixed(2) + '%';
-    roiElem.style.color = roi >= 0 ? 'var(--accent-hover)' : '#ff6b6b';
-
-    // Populate bottom summary card
-    const finalNetProfitElem = document.getElementById('finalNetProfit');
-    finalNetProfitElem.textContent = formatMoney(profit);
-    finalNetProfitElem.style.color = profit >= 0 ? 'var(--accent-hover)' : '#ff6b6b';
-
-    const finalROIElem = document.getElementById('finalROI');
-    finalROIElem.textContent = roi.toFixed(2) + '%';
-    finalROIElem.style.color = roi >= 0 ? 'var(--accent-hover)' : '#ff6b6b';
-
-    const finalProfitabilityElem = document.getElementById('finalProfitability');
-    finalProfitabilityElem.textContent = profitability.toFixed(2) + '%';
-    finalProfitabilityElem.style.color = profitability >= 0 ? 'var(--accent-hover)' : '#ff6b6b';
-}</td>
-            <td data-label="Unidades">${productUnits.toFixed(2)}</td>
+        // Renderizar fila de RESULTADO
+        const resultTr = document.createElement('tr');
+        resultTr.innerHTML = `
+            <td data-label="Producto">${p.name || 'Sin Nombre'}</td>
             <td data-label="Ingresos">${formatMoney(revenue)}</td>
-            <td data-label="Costo de Adquisición Unit.">${formatMoney(unitAcquisitionCost)}</td>
+            <td data-label="Costos Var.">${formatMoney(cv)}</td>
+            <td data-label="Gastos Var.">${formatMoney(gv)}</td>
+            <td data-label="Costos Fijos">${formatMoney(cf)}</td>
+            <td data-label="Alícuota G.F.">${formatMoney(aliquotGF)}</td>
+            <td data-label="Inversión">${formatMoney(investment)}</td>
+            <td data-label="Rentabilidad" class="${profitability >= 0 ? 'text-green' : 'text-red'} font-bold">${formatMoney(profitability)}</td>
+            <td data-label="ROI (%)">${roi.toFixed(2)}%</td>
+            <td data-label="Margen (%)">${margin.toFixed(2)}%</td>
+            <td data-label="Costo Adq.">${formatMoney(acquisitionCost)}</td>
         `;
-        tbody.appendChild(tr);
+        resultBody.appendChild(resultTr);
     });
 
-    const margin = totalRevenue - totalCV - totalGV;
-    const investment = totalCV + totalGV + totalCF + tGFG;
-    const profit = margin - totalCF - tGFG;
-    const roi = investment > 0 ? (profit / investment) * 100 : 0;
+    // Actualizar Resumen Global
+    const totalROI = totalInvestment > 0 ? (totalProfit / totalInvestment) * 100 : 0;
+    const totalMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
-    document.getElementById('projRevenue').textContent = formatMoney(totalRevenue);
-    document.getElementById('projCV').textContent = formatMoney(totalCV);
-    document.getElementById('projGV').textContent = formatMoney(totalGV);
-    document.getElementById('projMargin').textContent = formatMoney(margin);
-    document.getElementById('projCFA').textContent = formatMoney(totalCF);
-    document.getElementById('projGFG').textContent = formatMoney(tGFG);
-    document.getElementById('projInvestment').textContent = formatMoney(investment);
+    document.getElementById('totalFixedProj').textContent = formatMoney(totalCF + globalFixed);
+    document.getElementById('totalRevenueProj').textContent = formatMoney(totalRevenue);
+    document.getElementById('totalInvestmentProj').textContent = formatMoney(totalInvestment);
+    document.getElementById('totalProfitProj').textContent = formatMoney(totalProfit);
+    document.getElementById('totalROIProj').textContent = totalROI.toFixed(2) + '%';
+    document.getElementById('totalMarginProj').textContent = totalMargin.toFixed(2) + '%';
+};
 
-    const profitElem = document.getElementById('projProfit');
-    profitElem.textContent = formatMoney(profit);
-    profitElem.style.color = profit >= 0 ? 'var(--accent-hover)' : '#ff6b6b';
+app.generatePDF = function() {
+    if (!window.jspdf) {
+        alert("Las librerías de PDF no se han cargado correctamente. Por favor, recarga la página.");
+        return;
+    }
 
-    const roiElem = document.getElementById('projROI');
-    roiElem.textContent = roi.toFixed(2) + '%';
-    roiElem.style.color = roi >= 0 ? 'var(--accent-hover)' : '#ff6b6b';
-}
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4'); // Vertical A4 para reporte formal
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const primaryColor = [60, 179, 113];
+
+    // --- CABECERA ---
+    doc.setFontSize(22);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text("DETRÁS DEL BALANCE", 14, 20);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Reporte Financiero Integral", 14, 28);
+
+    doc.setFontSize(9);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Instagram: @detras_del_balance", 14, 38);
+    doc.text("WhatsApp: +58 412-3422609", 14, 43);
+    doc.text(`Fecha de Emisión: ${new Date().toLocaleDateString()}`, pageWidth - 14, 38, { align: 'right' });
+
+    let currentY = 55;
+
+    // --- SECCIÓN 1: PRODUCTOS Y COSTOS ---
+    doc.setFontSize(12);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text("1. ESTRUCTURA DE COSTOS POR PRODUCTO", 14, currentY);
+
+    const productData = state.products.map(p => {
+        const sum = (arr) => (arr || []).reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+        const tCV = sum(p.cv);
+        const tCF = sum(p.cf);
+        const tGV = sum(p.gv);
+        return [p.name || 'S/N', formatMoney(p.pvp), formatMoney(tCV), formatMoney(tGV), formatMoney(tCF)];
+    });
+
+    doc.autoTable({
+        startY: currentY + 5,
+        head: [['Producto', 'PVP', 'Costo Var.', 'Gasto Var.', 'Costo Fijo Asig.']],
+        body: productData,
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor }
+    });
+
+    currentY = doc.lastAutoTable.finalY + 15;
+
+    // --- SECCIÓN 2: GASTOS FIJOS GLOBALES ---
+    doc.text("2. GASTOS FIJOS GLOBALES", 14, currentY);
+    
+    const gfData = state.globalFixedExpenses.map(e => [e.desc, formatMoney(e.amount)]);
+    const totalGF = state.globalFixedExpenses.reduce((sum, e) => sum + e.amount, 0);
+    gfData.push([{ content: 'TOTAL GASTOS FIJOS GLOBALES', styles: { fontStyle: 'bold' } }, { content: formatMoney(totalGF), styles: { fontStyle: 'bold' } }]);
+
+    doc.autoTable({
+        startY: currentY + 5,
+        head: [['Descripción', 'Monto']],
+        body: gfData,
+        theme: 'plain',
+        headStyles: { fillColor: [100, 100, 100] }
+    });
+
+    currentY = doc.lastAutoTable.finalY + 15;
+
+    // --- SECCIÓN 3: PUNTO DE EQUILIBRIO PONDERADO ---
+    if (currentY > 230) { doc.addPage(); currentY = 20; }
+    doc.text("3. ANÁLISIS DE PUNTO DE EQUILIBRIO PONDERADO", 14, currentY);
+
+    const bepBody = [];
+    const bepRows = document.querySelectorAll('#pepTable tbody tr');
+    bepRows.forEach(row => {
+        const cells = Array.from(row.querySelectorAll('td')).map(td => {
+            // Si el td contiene un input, tomar su valor, si no, tomar el texto
+            const input = td.querySelector('input');
+            return input ? input.value : td.textContent.trim();
+        });
+        // Filtrar solo las columnas que queremos en el PDF (Producto, Ponderación, Margen, PE Unidades, PE Ventas)
+        // Estructura tabla: [Incluir, Producto, CV, GV, TotalVar, PVP, Margen, Pond, MargenPond, PEUnits, PEVentas]
+        const filteredCells = [
+            cells[1], // Producto
+            cells[7] + '%', // Ponderación
+            cells[6], // Margen Contrib.
+            cells[9], // PE Unidades
+            cells[10] // PE Ventas
+        ];
+        bepBody.push(filteredCells);
+    });
+
+    doc.autoTable({
+        startY: currentY + 5,
+        head: [['Producto', 'Ponderación', 'Margen Contrib.', 'PE (Unidades)', 'PE (Ventas $)']],
+        body: bepBody,
+        theme: 'grid',
+        headStyles: { fillColor: primaryColor }
+    });
+
+    // Resumen Global de PE
+    const resBEPMoney = document.getElementById('resBEPMoney');
+    const resTotalWeightedMargin = document.getElementById('resTotalWeightedMargin');
+    
+    const globalBESummary = [
+        ["Ventas Totales en Equilibrio", resBEPMoney ? resBEPMoney.textContent : "$0.00"],
+        ["Margen de Contribución Ponderado", resTotalWeightedMargin ? resTotalWeightedMargin.textContent : "$0.00"]
+    ];
+
+    doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 5,
+        body: globalBESummary,
+        theme: 'plain',
+        styles: { fontStyle: 'bold' },
+        columnStyles: { 0: { cellWidth: 100 } }
+    });
+
+    doc.addPage();
+    currentY = 20;
+
+    // --- SECCIÓN 4: SIMULACIÓN DE PROYECCIÓN ---
+    doc.text("4. SIMULACIÓN DE PROYECCIÓN Y RENTABILIDAD", 14, currentY);
+
+    const projBody = [];
+    document.querySelectorAll('#projResultBody tr').forEach(row => {
+        projBody.push(Array.from(row.querySelectorAll('td')).map(td => td.textContent));
+    });
+
+    doc.autoTable({
+        startY: currentY + 5,
+        head: [['Producto', 'Ingresos', 'Costos Var.', 'Gastos Var.', 'Costos Fijos', 'Alicuota G.F.', 'Inversión', 'Rentabilidad', 'ROI (%)', 'Margen (%)', 'Costo Adq.']],
+        body: projBody,
+        theme: 'grid',
+        headStyles: { fillColor: primaryColor, fontSize: 7 },
+        styles: { fontSize: 7 }
+    });
+
+    // --- RESUMEN FINAL ---
+    doc.setFontSize(14);
+    doc.text("CONCLUSIONES GENERALES", 14, doc.lastAutoTable.finalY + 15);
+
+    const finalSummary = [
+        ["Ingresos Brutos Proyectados", document.getElementById('totalRevenueProj').textContent],
+        ["Inversión Total Operativa", document.getElementById('totalInvestmentProj').textContent],
+        ["UTILIDAD NETA ESTIMADA", document.getElementById('totalProfitProj').textContent],
+        ["RETORNO DE INVERSIÓN (ROI)", document.getElementById('totalROIProj').textContent],
+        ["MARGEN DE UTILIDAD SOBRE VENTAS", document.getElementById('totalMarginProj').textContent]
+    ];
+
+    doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 20,
+        body: finalSummary,
+        theme: 'striped',
+        styles: { fontSize: 10, cellPadding: 5 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 100 } }
+    });
+
+    // Pie de página
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text("Este documento es un análisis financiero proyectado. Los resultados dependen del cumplimiento de las metas de ventas.", pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+
+    doc.save(`Informe_Financiero_DetrasDelBalance_${new Date().toISOString().slice(0,10)}.pdf`);
+};
 
 // --- Utils ---
 const sanitizeHTML = (str) => {
@@ -700,8 +866,9 @@ app.updateCostItem = (containerId, index, field, value) => {
         targetArray[index][field] = value;
     }
     updateProductTotals(product);
+    renderProductsList(); // Update portfolio summary
     renderBEPModule();
-    renderProjection();
+    app.renderProjection();
 };
 
 function getTargetArray(product, containerId) {
@@ -723,5 +890,6 @@ function updateProductTotals(product) {
 }
 
 app.saveProductDetails = () => {
-    alert("Detalles guardados. (El guardado es automático en memoria)");
+    renderApp();
+    alert("Detalles guardados y resumen actualizado.");
 };

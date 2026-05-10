@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Punto de Equilibrio Ponderado</title>
+    <link rel="icon" type="image/png" href="/assets/ICONO%202-C358ChnI.png">
+    
+    <!-- Open Graph / Social Media Preview -->
+    <meta property="og:title" content="Calculadora de Punto de Equilibrio Ponderado">
+    <meta property="og:description" content="Analiza tu punto de equilibrio y rentabilidad proyectada con nuestra herramienta profesional.">
+    <meta property="og:image" content="../ICONO 2.png">
+    <meta property="og:type" content="website">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Calculadora Financiera">
+    <meta name="twitter:description" content="Analiza tu punto de equilibrio y rentabilidad proyectada con nuestra herramienta profesional.">
+    <meta name="twitter:image" content="../ICONO 2.png">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- SheetJS (xlsx) para manejo de Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <script type="module" crossorigin src="/assets/punto-VDlXKyVj.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/punto-CPO4iy_1.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="header">
+            <div class="header-container">
+                <img src="/assets/LOGO-PRIMARIO-DEp7KSwZ.png" alt="Logo" class="main-logo">
+                <h1>Calculadora Financiera - Punto de Equilibrio Ponderado</h1>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="module1">1. Gestión de Productos</button>
+            <button class="tab-btn" data-tab="module2">2. Gastos Fijos Globales</button>
+            <button class="tab-btn" data-tab="module3">3. Punto de Equilibrio Ponderado</button>
+            <button class="tab-btn" data-tab="module4">4. Proyección</button>
+        </nav>
+
+        <main class="content-area">
+            <!-- Módulo 1: Gestión de Productos -->
+            <section id="module1" class="tab-content active">
+                <div class="card">
+                    <h2>Gestión de Productos</h2>
+
+                    <div class="import-actions">
+                        <div class="dropzone" id="excelDropzone">
+                            <p>Arrastra y suelta tu archivo Excel (.xlsx/.csv) aquí o haz clic para subir.</p>
+                            <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" hidden>
+                        </div>
+                        <div class="manual-actions">
+                            <button class="btn-action" onclick="app.downloadTemplate()">Descargar Plantilla Excel</button>
+                            <div class="manual-product-form glass-panel mt-3">
+                                <h4>Agregar Manualmente</h4>
+                                <div class="form-group">
+                                    <input type="text" id="manualCode" placeholder="Código">
+                                    <input type="text" id="manualName" placeholder="Nombre">
+                                    <input type="number" id="manualPVP" placeholder="Precio (PVP)" min="0" step="0.01" style="width: 120px;">
+                                    <button class="btn-action" onclick="app.addManualProduct()">Agregar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="product-management-grid mt-3">
+                        <div class="product-list-container">
+                            <h3>Lista de Productos</h3>
+                            <div id="emptyState" class="empty-state hidden">
+                                <p>No hay productos cargados aún. Usa el formulario o sube un archivo Excel.</p>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="data-table" id="productsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Código</th>
+                                            <th>Nombre</th>
+                                            <th>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Los productos se cargarán aquí -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="portfolio-summary glass-panel mt-3 hidden" id="portfolioSummary">
+                                <h4>Resumen Total de la Cartera</h4>
+                                <p>Costos Variables Totales: $<span id="portTotalCV">0.00</span></p>
+                                <p>Costos Fijos Totales: $<span id="portTotalCF">0.00</span></p>
+                                <p>Gastos Variables Totales: $<span id="portTotalGV">0.00</span></p>
+                            </div>
+                        </div>
+
+                        <div class="product-details-container glass-panel">
+                            <h3>Detalle del Producto <span id="selectedProductName"></span></h3>
+                            <div id="productDetailsForm" class="hidden">
+                                <div class="cost-section">
+                                    <h4>Costos Variables <button class="btn-icon" title="Agregar Costo Variable" onclick="app.addCostRow('cvContainer')">+</button></h4>
+                                    <div id="cvContainer"></div>
+                                </div>
+                                <div class="cost-section">
+                                    <h4>Costos Fijos <button class="btn-icon" title="Agregar Costo Fijo" onclick="app.addCostRow('cfContainer')">+</button></h4>
+                                    <div id="cfContainer"></div>
+                                </div>
+                                <div class="cost-section">
+                                    <h4>Gastos Variables <button class="btn-icon" title="Agregar Gasto Variable" onclick="app.addCostRow('gvContainer')">+</button></h4>
+                                    <div id="gvContainer"></div>
+                                </div>
+
+                                <div class="totals-summary mt-3">
+                                    <p>Total CV: $<span id="totalCV">0.00</span></p>
+                                    <p>Total CF: $<span id="totalCF">0.00</span></p>
+                                    <p>Total GV: $<span id="totalGV">0.00</span></p>
+                                    <button class="btn-action mt-2" onclick="app.saveProductDetails()">Guardar Detalle</button>
+                                </div>
+                            </div>
+                            <p id="noProductSelected" class="text-muted">Seleccione un producto para ver/editar detalles.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Módulo 2: Gastos Fijos Globales -->
+            <section id="module2" class="tab-content">
+                <div class="card">
+                    <h2>Gastos Fijos Globales</h2>
+                    <p class="text-muted">Ingrese gastos operativos que no dependen de un producto específico (ej. Arriendo, Nómina).</p>
+
+                    <div class="add-expense-form">
+                        <input type="text" id="gfgDesc" placeholder="Descripción del Gasto">
+                        <input type="number" id="gfgAmount" placeholder="Monto ($)" min="0" step="0.01">
+                        <button class="btn-action" onclick="app.addGlobalFixedExpense()">Agregar Gasto</button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table mt-3" id="gfgTable">
+                            <thead>
+                                <tr>
+                                    <th>Descripción</th>
+                                    <th>Monto</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Gastos fijos globales aquí -->
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th>Total Gastos Fijos Globales</th>
+                                    <th id="totalGFG">$0.00</th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Módulo 3: Punto de Equilibrio Ponderado -->
+            <section id="module3" class="tab-content">
+                <div class="card">
+                    <h2>Punto de Equilibrio Ponderado</h2>
+                    <p class="text-muted">Seleccione productos e ingrese su Precio de Venta y Ponderación para el cálculo.</p>
+
+                    <div class="table-responsive">
+                        <table class="data-table" id="pepTable">
+                            <thead>
+                                <tr>
+                                    <th>Incluir</th>
+                                    <th>Producto</th>
+                                    <th>Costo Var.</th>
+                                    <th>Gasto Var.</th>
+                                    <th>Total Var.</th>
+                                    <th>PVP ($)</th>
+                                    <th>Margen Contrib.</th>
+                                    <th>Ponderación (%)</th>
+                                    <th>M. Contrib. Pond.</th>
+                                    <th>PE (Unidades)</th>
+                                    <th>PE ($)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Productos con checkbox y campos aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="summary-card glass-panel mt-3">
+                        <h3>Resultados del Punto de Equilibrio</h3>
+                        <div class="results-grid">
+                            <div class="result-item">
+                                <label>Total Costos/Gastos Fijos:</label>
+                                <span class="highlight" id="resTotalFixed">$0.00</span>
+                            </div>
+                            <div class="result-item">
+                                <label>Total Ponderación:</label>
+                                <span class="highlight" id="resTotalWeight">0%</span>
+                            </div>
+                            <div class="result-item">
+                                <label>Margen de Contribución Ponderado Total:</label>
+                                <span class="highlight" id="resTotalWeightedMargin">$0.00</span>
+                            </div>
+                            <div class="result-item important">
+                                <label>Punto de Equilibrio (Unidades Totales):</label>
+                                <span class="highlight text-green" id="resBEPUnits">0</span>
+                            </div>
+                            <div class="result-item important">
+                                <label>Punto de Equilibrio (Dinero):</label>
+                                <span class="highlight text-green" id="resBEPMoney">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Módulo 4: Proyección -->
+            <section id="module4" class="tab-content">
+                <div class="card">
+                    <h2>Simulador de Proyección</h2>
+                    <div class="info-banner mb-3">
+                        <i class="fas fa-info-circle"></i> Ajuste las cantidades proyectadas en la tabla de entrada para ver el análisis detallado de rentabilidad e inversión.
+                    </div>
+
+                    <!-- Sección de Entrada de Datos -->
+                    <div class="mt-3">
+                        <h3>Entrada de Unidades Proyectadas</h3>
+                        <div class="table-responsive">
+                            <table class="data-table" id="projInputTable">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>PVP ($)</th>
+                                        <th>PE Referencia</th>
+                                        <th>Unidades Proyectadas</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="projInputBody">
+                                    <!-- Filas de entrada aquí -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Sección de Resultados por Producto -->
+                    <div class="mt-4">
+                        <h3>Resultados Detallados por Producto</h3>
+                        <div class="table-responsive">
+                            <table class="data-table" id="projResultTable">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Ingresos</th>
+                                        <th>Costos Var.</th>
+                                        <th>Gastos Var.</th>
+                                        <th>Costos Fijos</th>
+                                        <th>Alícuota G.F.</th>
+                                        <th>Inversión</th>
+                                        <th>Rentabilidad</th>
+                                        <th>ROI (%)</th>
+                                        <th>Margen (%)</th>
+                                        <th>Costo Adq.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="projResultBody">
+                                    <!-- Resultados por producto aquí -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Resultados Generales -->
+                    <div class="summary-card glass-panel mt-4">
+                        <h3 class="text-center mb-3">Resultados Generales de la Proyección</h3>
+                        <div class="results-grid">
+                            <div class="result-item">
+                                <label>Total Gastos Fijos (Asignados + Globales):</label>
+                                <span class="highlight" id="totalFixedProj">$0.00</span>
+                            </div>
+                            <div class="result-item">
+                                <label>Ingresos Brutos Totales:</label>
+                                <span class="highlight" id="totalRevenueProj">$0.00</span>
+                            </div>
+                            <div class="result-item">
+                                <label>Total Inversión (Var + Fijo):</label>
+                                <span class="highlight" id="totalInvestmentProj">$0.00</span>
+                            </div>
+                            <div class="result-item important">
+                                <label>Rentabilidad Total:</label>
+                                <span class="highlight text-green" id="totalProfitProj">$0.00</span>
+                            </div>
+                            <div class="summary-item">
+                                <span>ROI Total (%):</span>
+                                <h3 id="totalROIProj">0.00%</h3>
+                            </div>
+                            <div class="summary-item">
+                                <span>Margen Total (%):</span>
+                                <h3 id="totalMarginProj">0.00%</h3>
+                            </div>
+                        </div>
+                        <div class="text-center mt-4">
+                            <button class="btn-action" onclick="app.generatePDF()">
+                                <i class="fas fa-file-pdf"></i> Generar Informe PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        <footer class="footer mt-4 text-center text-muted">
+            <p>&copy; 2024 Detrás del Balance - Calculadora de Punto de Equilibrio Ponderado</p>
+            <p class="powered-by">Powered By Migo</p>
+        </footer>
+    </div>
+
+    <!-- Floating Contact Buttons -->
+    <div class="floating-contacts">
+        <a href="https://wa.me/584123422609?text=Hola,%20quisiera%20informaci%C3%B3n%20sobre%20tus%20servicios%20contables" 
+           target="_blank" class="float-btn whatsapp" title="Servicios contables">
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.937 3.659 1.432 5.631 1.432h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+            <span class="float-label">Servicios Contables</span>
+        </a>
+        <a href="https://www.instagram.com/detras_del_balance?igsh=MTE5NG5xZWl4MWpiYw==" 
+           target="_blank" class="float-btn instagram" title="Sígueme">
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.17.054 1.805.249 2.227.412.56.216.96.474 1.38.894.42.42.678.82.894 1.38.163.422.358 1.057.412 2.227.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.054 1.17-.249 1.805-.412 2.227-.216.56-.474.96-.894 1.38-.42.42-.82.678-1.38.894-.422.163-1.057.358-2.227.412-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.17-.054-1.805-.249-2.227-.412-.56-.216-.96-.474-1.38-.894-.42-.42-.678-.82-.894-1.38-.163-.422-.358-1.057-.412-2.227-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.054-1.17.249-1.805.412-2.227.216-.56.474-.96.894-1.38.42-.42.82-.678 1.38-.894.422-.163 1.057-.358 2.227-.412 1.266-.058 1.646-.07 4.85-.07zM12 0C8.741 0 8.333.014 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.132 5.775.072 7.053.014 8.333 0 8.741 0 12s.014 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126s1.384 1.078 2.126 1.384c.766.296 1.636.499 2.913.558C8.333 23.986 8.741 24 12 24s3.667-.014 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384s1.078-1.384 1.384-2.126c.296-.765.499-1.636.558-2.913.058-1.28.072-1.687.072-4.947s-.014-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126s-1.384-1.078-2.126-1.384c-.765-.296-1.636-.499-2.913-.558C15.667.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+            </svg>
+            <span class="float-label">Sígueme</span>
+        </a>
+    </div>
+
+</body>
+</html>

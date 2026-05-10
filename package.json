@@ -1,0 +1,14 @@
+{
+  "name": "punto-de-equilibrio",
+  "version": "1.0.0",
+  "description": "Calculadora de Punto de Equilibrio Ponderado",
+  "main": "src/index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

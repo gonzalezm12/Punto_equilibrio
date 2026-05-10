@@ -3,267 +3,310 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Punto de Equilibrio Ponderado</title>
-
+    <title>Detrás del Balance | La Ciencia de Tu Dinero, Bajo Control</title>
+    <link rel="icon" type="image/png" href="./ICONO 2.png">
+    
+    <!-- Open Graph / Social Media Preview -->
+    <meta property="og:title" content="Detrás del Balance | La Ciencia de Tu Dinero, Bajo Control">
+    <meta property="og:description" content="Potencia tu estructura financiera con nuestro sistema de gestión y servicios contables especializados.">
+    <meta property="og:image" content="./ICONO 2.png">
+    <meta property="og:type" content="website">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Detrás del Balance">
+    <meta name="twitter:description" content="Potencia tu estructura financiera con nuestro sistema de gestión y servicios contables especializados.">
+    <meta name="twitter:image" content="./ICONO 2.png">
+    
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-
-    <!-- SheetJS (xlsx) para manejo de Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="landing.css">
 </head>
 <body>
-    <div class="dashboard-container">
-        <header class="header">
-            <h1>Calculadora Financiera - Punto de Equilibrio Ponderado</h1>
-        </header>
+    <!-- Top Banner -->
+    <a href="https://wa.me/584123422609?text=Hola,%20vi%20la%20Oferta%20Premium%20en%20la%20web" target="_blank" class="top-banner">
+        <strong>Oferta Premium:</strong> ¡Contrata Gestión Contable y obtén el sistema GRATIS! 🚀
+    </a>
 
-        <nav class="tabs">
-            <button class="tab-btn active" data-tab="module1">1. Gestión de Productos</button>
-            <button class="tab-btn" data-tab="module2">2. Gastos Fijos Globales</button>
-            <button class="tab-btn" data-tab="module3">3. Punto de Equilibrio Ponderado</button>
-            <button class="tab-btn" data-tab="module4">4. Proyección</button>
-        </nav>
+    <!-- Navbar -->
+    <nav class="navbar" style="top: 40px;">
+        <div class="container nav-container">
+            <div class="logo">
+                <img src="LOGO-PRIMARIO.png" alt="Detrás del Balance">
+            </div>
+            <div class="nav-links">
+                <a href="#inicio">Inicio</a>
+                <a href="#que-es">¿Qué es?</a>
+                <a href="#servicios">Servicios</a>
+                <a href="#calculadoras">Calculadoras</a>
+                <a href="http://gestion.detrasdelbalance.com" class="btn-cta">Acceder al Sistema</a>
+            </div>
+            <button class="menu-toggle"><i class="fas fa-bars"></i></button>
+        </div>
+    </nav>
 
-        <main class="content-area">
-            <!-- Módulo 1: Gestión de Productos -->
-            <section id="module1" class="tab-content active">
-                <div class="card">
-                    <h2>Gestión de Productos</h2>
+    <!-- Hero Section -->
+    <header id="inicio" class="hero">
+        <div class="container hero-container">
+            <div class="hero-content">
+                <h1 class="fade-in">La Ciencia de Tu Dinero, <span>Bajo Control</span>.</h1>
+                <p class="fade-in-delay">No somos solo un software; somos el cerebro financiero de tu empresa. Gestión y control de alto nivel para decisiones quirúrgicas.</p>
+                <div class="hero-btns fade-in-delay">
+                    <a href="http://gestion.detrasdelbalance.com" class="btn-primary">Gestionar mi Empresa</a>
+                    <a href="#servicios" class="btn-glass-glow">Servicios Contables</a>
+                </div>
+            </div>
+            <div class="hero-image fade-in">
+                <img src="ICONO 2.png" alt="DDB Icon" class="floating-icon">
+            </div>
+        </div>
+    </header>
 
-                    <div class="import-actions">
-                        <div class="dropzone" id="excelDropzone">
-                            <p>Arrastra y suelta tu archivo Excel (.xlsx/.csv) aquí o haz clic para subir.</p>
-                            <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" hidden>
-                        </div>
-                        <div class="manual-actions">
-                            <button class="btn-action" onclick="app.downloadTemplate()">Descargar Plantilla Excel</button>
-                            <div class="manual-product-form glass-panel mt-3">
-                                <h4>Agregar Manualmente</h4>
-                                <div class="form-group">
-                                    <input type="text" id="manualCode" placeholder="Código">
-                                    <input type="text" id="manualName" placeholder="Nombre">
-                                    <input type="number" id="manualPVP" placeholder="Precio (PVP)" min="0" step="0.01" style="width: 120px;">
-                                    <button class="btn-action" onclick="app.addManualProduct()">Agregar</button>
-                                </div>
-                            </div>
-                        </div>
+    <!-- Concept Section -->
+    <section id="que-es" class="concept">
+        <div class="container">
+            <div class="section-header text-center">
+                <h2>¿Qué es Detrás del Balance?</h2>
+                <p class="warning-text"><i class="fas fa-exclamation-circle"></i> No somos un sistema de facturación. Somos Gestión y Control Financiero.</p>
+            </div>
+            <div class="concept-grid">
+                <div class="concept-card">
+                    <i class="fas fa-brain"></i>
+                    <h3>Cerebro Financiero</h3>
+                    <p>Diseñado para quienes entienden que el éxito se mide en la claridad del flujo de caja y la solidez del patrimonio, no en simples registros de ventas.</p>
+                </div>
+                <div class="concept-card">
+                    <i class="fas fa-microscope"></i>
+                    <h3>Rastreo Quirúrgico</h3>
+                    <p>Vea exactamente por dónde se mueve el dinero, dónde se estanca y cómo se transforma en crecimiento real. Control absoluto, cero ceguera.</p>
+                </div>
+                <div class="concept-card">
+                    <i class="fas fa-shield-halved"></i>
+                    <h3>Control Financiero</h3>
+                    <p>Conectamos los acuerdos de tu mesa directiva con el control operativo, asegurando que las decisiones financieras se ejecuten sin fugas.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Professional Services Section -->
+    <section id="servicios" class="services">
+        <div class="container">
+            <div class="services-container">
+                <div class="services-text">
+                    <h2 class="section-title">Servicios Profesionales de <span>Gestión Contable</span></h2>
+                    <p>Ofrecemos un respaldo integral para que tú te enfoques en crecer, mientras nosotros gestionamos la estructura legal y financiera de tu empresa.</p>
+                    <div class="services-grid">
+                        <div class="service-item"><i class="fas fa-check-circle"></i> Gestión administrativa</div>
+                        <div class="service-item"><i class="fas fa-check-circle"></i> Permisos legales</div>
+                        <div class="service-item"><i class="fas fa-check-circle"></i> Trámites parafiscales</div>
+                        <div class="service-item"><i class="fas fa-check-circle"></i> Asesoría fiscal</div>
+                        <div class="service-item"><i class="fas fa-check-circle"></i> Gestión contable</div>
+                        <div class="service-item"><i class="fas fa-check-circle"></i> Registro de empresas</div>
+                        <div class="service-item"><i class="fas fa-check-circle"></i> Auditorías</div>
+                        <div class="service-item"><i class="fas fa-check-circle"></i> Capacitación</div>
                     </div>
-
-                    <div class="product-management-grid mt-3">
-                        <div class="product-list-container">
-                            <h3>Lista de Productos</h3>
-                            <div id="emptyState" class="empty-state hidden">
-                                <p>No hay productos cargados aún. Usa el formulario o sube un archivo Excel.</p>
-                            </div>
-                            <table class="data-table" id="productsTable">
-                                <thead>
-                                    <tr>
-                                        <th>Código</th>
-                                        <th>Nombre</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Los productos se cargarán aquí -->
-                                </tbody>
-                            </table>
-                            <div class="portfolio-summary glass-panel mt-3 hidden" id="portfolioSummary">
-                                <h4>Resumen Total de la Cartera</h4>
-                                <p>Costos Variables Totales: $<span id="portTotalCV">0.00</span></p>
-                                <p>Costos Fijos Totales: $<span id="portTotalCF">0.00</span></p>
-                                <p>Gastos Variables Totales: $<span id="portTotalGV">0.00</span></p>
-                            </div>
-                        </div>
-
-                        <div class="product-details-container glass-panel">
-                            <h3>Detalle del Producto <span id="selectedProductName"></span></h3>
-                            <div id="productDetailsForm" class="hidden">
-                                <div class="cost-section">
-                                    <h4>Costos Variables <button class="btn-icon" title="Agregar Costo Variable" onclick="app.addCostRow('cvContainer')">+</button></h4>
-                                    <div id="cvContainer"></div>
-                                </div>
-                                <div class="cost-section">
-                                    <h4>Costos Fijos <button class="btn-icon" title="Agregar Costo Fijo" onclick="app.addCostRow('cfContainer')">+</button></h4>
-                                    <div id="cfContainer"></div>
-                                </div>
-                                <div class="cost-section">
-                                    <h4>Gastos Variables <button class="btn-icon" title="Agregar Gasto Variable" onclick="app.addCostRow('gvContainer')">+</button></h4>
-                                    <div id="gvContainer"></div>
-                                </div>
-
-                                <div class="totals-summary mt-3">
-                                    <p>Total CV: $<span id="totalCV">0.00</span></p>
-                                    <p>Total CF: $<span id="totalCF">0.00</span></p>
-                                    <p>Total GV: $<span id="totalGV">0.00</span></p>
-                                    <button class="btn-action mt-2" onclick="app.saveProductDetails()">Guardar Detalle</button>
-                                </div>
-                            </div>
-                            <p id="noProductSelected" class="text-muted">Seleccione un producto para ver/editar detalles.</p>
-                        </div>
+                    
+                    <!-- Premium Offer Box -->
+                    <div class="offer-box glass-panel mt-4">
+                        <div class="offer-badge">OFERTA PREMIUM</div>
+                        <h3>Al contratar nuestra <strong>Gestión Contable</strong>, obtienes acceso <span>GRATUITO</span> a nuestro Sistema de Gestión Financiera.</h3>
+                        <p>La combinación perfecta: Expertos contables + El mejor cerebro financiero digital.</p>
+                        <a href="https://wa.me/584123422609" class="btn-premium-orange" style="margin-top: 2.5rem;">Me interesa la oferta</a>
                     </div>
                 </div>
-            </section>
+            </div>
+        </div>
+    </section>
 
-            <!-- Módulo 2: Gastos Fijos Globales -->
-            <section id="module2" class="tab-content">
-                <div class="card">
-                    <h2>Gastos Fijos Globales</h2>
-                    <p class="text-muted">Ingrese gastos operativos que no dependen de un producto específico (ej. Arriendo, Nómina).</p>
-
-                    <div class="add-expense-form">
-                        <input type="text" id="gfgDesc" placeholder="Descripción del Gasto">
-                        <input type="number" id="gfgAmount" placeholder="Monto ($)" min="0" step="0.01">
-                        <button class="btn-action" onclick="app.addGlobalFixedExpense()">Agregar Gasto</button>
-                    </div>
-
-                    <table class="data-table mt-3" id="gfgTable">
-                        <thead>
-                            <tr>
-                                <th>Descripción</th>
-                                <th>Monto</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Gastos fijos globales aquí -->
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <th>Total Gastos Fijos Globales</th>
-                                <th id="totalGFG">$0.00</th>
-                                <th></th>
-                            </tr>
-                        </tfoot>
-                    </table>
+    <!-- Core Functionalities -->
+    <section id="funcionalidades" class="features bg-dark">
+        <div class="container">
+            <div class="section-header text-center mb-5">
+                <h2>Potencia tu <span>Estructura Financiera</span></h2>
+                <p>Todo lo que necesitas para una gestión impecable en un solo lugar.</p>
+            </div>
+            <div class="calculator-grid">
+                <div class="concept-card">
+                    <i class="fas fa-list-check"></i>
+                    <h3>Registro Universal</h3>
+                    <p>Controla ingresos, egresos, transferencias y ajustes con trazabilidad absoluta en cada operación.</p>
                 </div>
-            </section>
+                <div class="concept-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>Cálculos de Poder</h3>
+                    <p>Obtén en tiempo real tu Ganancia Neta, Patrimonio Neto y Flujo de Caja sin procesos manuales.</p>
+                </div>
+                <div class="concept-card">
+                    <i class="fas fa-layer-group"></i>
+                    <h3>Estructura por Centros</h3>
+                    <p>Administra centros de costo y presupuestos estratégicos para una toma de decisiones basada en datos.</p>
+                </div>
+                <div class="concept-card">
+                    <i class="fas fa-money-bill-transfer"></i>
+                    <h3>Multidivisa Dinámica</h3>
+                    <p>Gestión fluida de cambios de divisa y ajustes bimonetarios automáticos para un control real.</p>
+                </div>
+                <div class="concept-card">
+                    <i class="fas fa-wallet"></i>
+                    <h3>Cartera y Tesorería</h3>
+                    <p>Manejo quirúrgico de cuentas por cobrar y pagar para garantizar la liquidez permanente de tu empresa.</p>
+                </div>
+                <div class="concept-card">
+                    <i class="fas fa-magnifying-glass-chart"></i>
+                    <h3>Conciliación Fácil</h3>
+                    <p>Visualización inteligente para que tus conciliaciones bancarias sean rápidas, claras y sin errores.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-            <!-- Módulo 3: Punto de Equilibrio Ponderado -->
-            <section id="module3" class="tab-content">
-                <div class="card">
-                    <h2>Punto de Equilibrio Ponderado</h2>
-                    <p class="text-muted">Seleccione productos e ingrese su Precio de Venta y Ponderación para el cálculo.</p>
-
-                    <table class="data-table" id="pepTable">
-                        <thead>
-                            <tr>
-                                <th>Incluir</th>
-                                <th>Producto</th>
-                                <th>Costo Var.</th>
-                                <th>Gasto Var.</th>
-                                <th>Total Var.</th>
-                                <th>PVP ($)</th>
-                                <th>Ponderación (%)</th>
-                                <th>Margen Unit.</th>
-                                <th>PE (Unidades)</th>
-                                <th>PE ($)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Productos con checkbox y campos aquí -->
-                        </tbody>
-                    </table>
-
-                    <div class="summary-card glass-panel mt-3">
-                        <h3>Resultados del Punto de Equilibrio</h3>
-                        <div class="results-grid">
-                            <div class="result-item">
-                                <label>Total Costos/Gastos Fijos:</label>
-                                <span class="highlight" id="resTotalFixed">$0.00</span>
-                            </div>
-                            <div class="result-item">
-                                <label>Total Ponderación:</label>
-                                <span class="highlight" id="resTotalWeight">0%</span>
-                            </div>
-                            <div class="result-item">
-                                <label>Margen de Contribución Ponderado Total:</label>
-                                <span class="highlight" id="resTotalWeightedMargin">$0.00</span>
-                            </div>
-                            <div class="result-item important">
-                                <label>Punto de Equilibrio (Unidades Totales):</label>
-                                <span class="highlight text-green" id="resBEPUnits">0</span>
-                            </div>
-                            <div class="result-item important">
-                                <label>Punto de Equilibrio (Dinero):</label>
-                                <span class="highlight text-green" id="resBEPMoney">$0.00</span>
-                            </div>
-                        </div>
+    <!-- Unique Features -->
+    <section class="features bg-dark-soft">
+        <div class="container">
+            <div class="features-split">
+                <div class="features-text">
+                    <h2>¿Por qué elegir nuestro <span>Sistema</span>?</h2>
+                    <ul class="feature-list">
+                        <li>
+                            <strong>Control, no solo Registro:</strong> No nos interesa el ticket de venta; nos interesa la salud de tu cuenta bancaria y el ciclo de vida del dinero.
+                        </li>
+                        <li>
+                            <strong>Rastreo Multi-Estratégico:</strong> Vinculamos cada movimiento financiero con centros de costo y presupuestos estratégicos.
+                        </li>
+                        <li>
+                            <strong>Visión Bi-Monetaria Nativa:</strong> Control total en USD y moneda local con tasas automatizadas.
+                        </li>
+                    </ul>
+                </div>
+                <div class="features-visual">
+                    <div class="glass-box">
+                        <img src="LOGO-PRIMARIO.png" alt="Logo White" class="img-fluid">
                     </div>
                 </div>
-            </section>
+            </div>
+        </div>
+    </section>
 
-            <!-- Módulo 4: Proyección -->
-            <section id="module4" class="tab-content">
-                <div class="card">
-                    <h2>Simulador de Proyección</h2>
-                    <div class="simulator-input">
-                        <label for="projUnits">Unidades de Venta Proyectadas (Totales):</label>
-                        <input type="number" id="projUnits" min="0" value="0">
-                        <button class="btn-action" onclick="app.calculateProjection()">Calcular Proyección</button>
-                    </div>
-
-                    <div class="projection-results mt-3 glass-panel">
-                        <h3>Resultados Consolidados</h3>
-                        <table class="data-table summary-table" id="projectionTable">
-                            <tbody>
-                                <tr><td>Ingresos Totales</td><td id="projRevenue" class="text-right">$0.00</td></tr>
-                                <tr><td>Costos Variables Totales</td><td id="projCV" class="text-right">$0.00</td></tr>
-                                <tr><td>Gastos Variables Totales</td><td id="projGV" class="text-right">$0.00</td></tr>
-                                <tr><td>Margen de Contribución</td><td id="projMargin" class="text-right">$0.00</td></tr>
-                                <tr><td>Costos Fijos Asignados</td><td id="projCFA" class="text-right">$0.00</td></tr>
-                                <tr><td>Gastos Fijos Globales (Alícuota)</td><td id="projGFG" class="text-right">$0.00</td></tr>
-                                <tr><td>Inversión Total</td><td id="projInvestment" class="text-right">$0.00</td></tr>
-                                <tr class="total-row"><td>Utilidad / Rentabilidad</td><td id="projProfit" class="text-right">$0.00</td></tr>
-                                <tr class="total-row highlight-row"><td>ROI (%)</td><td id="projROI" class="text-right">0.00%</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="mt-3">
-                        <h3>Detalle por Producto</h3>
-                        <table class="data-table" id="projProductTable">
-                            <thead>
-                                <tr>
-                                    <th>Producto</th>
-                                    <th>Unidades</th>
-                                    <th>Ingresos</th>
-                                    <th>Total Var.</th>
-                                    <th>Margen Contrib. Total</th>
-                                    <th>Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Detalles por producto aquí -->
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="summary-card glass-panel mt-3 text-center">
-                        <button class="btn-action mt-2 mb-3" onclick="app.runAudit()">Ejecutar Auditoría Interna</button>
-                        <h3 class="mb-3">Resultados Generales de la Proyección</h3>
-                        <div class="results-grid">
-                            <div class="result-item important">
-                                <label>Utilidad Neta Global:</label>
-                                <span class="highlight" id="finalNetProfit">$0.00</span>
-                            </div>
-                            <div class="result-item important">
-                                <label>ROI Total:</label>
-                                <span class="highlight" id="finalROI">0.00%</span>
-                            </div>
-                            <div class="result-item important">
-                                <label>Rentabilidad Total:</label>
-                                <span class="highlight" id="finalProfitability">0.00%</span>
-                            </div>
-                        </div>
-                    </div>
-
+    <!-- Financial Calculators -->
+    <section id="calculadoras" class="calculators">
+        <div class="container">
+            <div class="section-header text-center">
+                <h2>Herramientas de Precisión</h2>
+                <p>Calculadoras financieras diseñadas para el rigor empresarial.</p>
+            </div>
+            <div class="calculator-grid">
+                <div class="calc-card">
+                    <div class="calc-tag">Popular</div>
+                    <i class="fas fa-balance-scale"></i>
+                    <h3>Punto de Equilibrio Ponderado</h3>
+                    <p>Analiza múltiples productos, calcula alícuotas de gastos fijos y proyecta rentabilidad con ROI quirúrgico.</p>
+                    <a href="punto-de-equilibrio/index.html" class="btn-text">Usar ahora <i class="fas fa-arrow-right"></i></a>
                 </div>
-            </section>
-        </main>
+                <!-- Future Calculators Placeholders -->
+                <div class="calc-card disabled">
+                    <i class="fas fa-cash-register"></i>
+                    <h3>Flujo de Caja Proyectado</h3>
+                    <p>Próximamente: La herramienta definitiva para anticipar tus necesidades de liquidez.</p>
+                    <span class="badge">Próximamente</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Team Section -->
+    <section class="team">
+        <div class="container">
+            <div class="section-header text-center mb-5">
+                <h2>Conoce al equipo</h2>
+                <p>Expertos financieros comprometidos con la salud de tu empresa.</p>
+            </div>
+            <div class="team-wrapper glass-panel">
+                <div class="team-image-container">
+                    <img src="conoce al equipo.png" alt="Equipo Detrás del Balance" class="img-team">
+                </div>
+                <div class="team-info-side">
+                    <h3>Pasión por los Números</h3>
+                    <p>Nuestro equipo combina décadas de experiencia en contabilidad pública, asesoría de negocios y tecnología financiera.</p>
+                    <p>No solo miramos tus números. Entendemos lo que hay detrás de ellos para proteger tu patrimonio.</p>
+                    <a href="https://wa.me/584123422609" class="btn-secondary" style="margin-top: 2rem; display: inline-block;">Contactar con un Experto</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container footer-container">
+            <div class="footer-info">
+                <img src="LOGO-PRIMARIO.png" alt="DDB Logo" class="footer-logo">
+                <p>La Ciencia de Tu Dinero, Bajo Control.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Enlaces</h4>
+                <a href="#inicio">Inicio</a>
+                <a href="#que-es">¿Qué es?</a>
+                <a href="#servicios">Servicios</a>
+                <a href="#calculadoras">Calculadoras</a>
+                <a href="http://gestion.detrasdelbalance.com">Acceso Sistema</a>
+            </div>
+            <div class="footer-contact">
+                <h4>Contacto</h4>
+                <p><i class="fab fa-instagram"></i> @detras_del_balance</p>
+                <p><i class="fab fa-whatsapp"></i> +58 412-3422609</p>
+            </div>
+        </div>
+        <div class="footer-bottom text-center">
+            <p>&copy; 2024 Detrás del Balance. Todos los derechos reservados.</p>
+            <p class="powered-by">Powered By Migo</p>
+        </div>
+    </footer>
+
+    <!-- Floating Contacts -->
+    <div class="floating-contacts">
+        <a href="https://wa.me/584123422609?text=Hola,%20quisiera%20informaci%C3%B3n%20sobre%20tus%20servicios%20contables" target="_blank" class="float-btn whatsapp">
+            <i class="fab fa-whatsapp"></i>
+            <span class="float-label">Servicios Contables</span>
+        </a>
+        <a href="https://www.instagram.com/detras_del_balance?igsh=MTE5NG5xZWl4MWpiYw==" target="_blank" class="float-btn instagram">
+            <i class="fab fa-instagram"></i>
+            <span class="float-label">Sígueme</span>
+        </a>
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        // Simple scroll effect for navbar
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('.navbar');
+            if (window.scrollY > 50) nav.classList.add('scrolled');
+            else nav.classList.remove('scrolled');
+        });
+
+        // Mobile Menu Toggle
+        const menuToggle = document.querySelector('.menu-toggle');
+        const navLinks = document.querySelector('.nav-links');
+
+        menuToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+            const icon = menuToggle.querySelector('i');
+            icon.classList.toggle('fa-bars');
+            icon.classList.toggle('fa-times');
+        });
+
+        // Close menu when clicking a link
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('active');
+                const icon = menuToggle.querySelector('i');
+                icon.classList.add('fa-bars');
+                icon.classList.remove('fa-times');
+            });
+        });
+    </script>
 </body>
 </html>
