@@ -577,7 +577,7 @@ app.generatePDF = function() {
     }
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4'); // Vertical A4 para reporte formal
+    const doc = new jsPDF('p', 'mm', 'a4'); 
     const pageWidth = doc.internal.pageSize.getWidth();
     const primaryColor = [60, 179, 113];
 
@@ -598,7 +598,7 @@ app.generatePDF = function() {
 
     let currentY = 55;
 
-    // --- SECCIÓN 1: PRODUCTOS Y COSTOS ---
+    // --- SECCIÓN 1: ESTRUCTURA DE COSTOS POR PRODUCTO ---
     doc.setFontSize(12);
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
     doc.text("1. ESTRUCTURA DE COSTOS POR PRODUCTO", 14, currentY);
@@ -622,6 +622,7 @@ app.generatePDF = function() {
     currentY = doc.lastAutoTable.finalY + 15;
 
     // --- SECCIÓN 2: GASTOS FIJOS GLOBALES ---
+    if (currentY > 230) { doc.addPage(); currentY = 20; }
     doc.text("2. GASTOS FIJOS GLOBALES", 14, currentY);
     
     const gfData = state.globalFixedExpenses.map(e => [e.desc, formatMoney(e.amount)]);
@@ -646,52 +647,77 @@ app.generatePDF = function() {
     const bepRows = document.querySelectorAll('#pepTable tbody tr');
     bepRows.forEach(row => {
         const cells = Array.from(row.querySelectorAll('td')).map(td => {
-            // Si el td contiene un input, tomar su valor, si no, tomar el texto
             const input = td.querySelector('input');
             return input ? input.value : td.textContent.trim();
         });
-        // Filtrar solo las columnas que queremos en el PDF (Producto, Ponderación, Margen, PE Unidades, PE Ventas)
-        // Estructura tabla: [Incluir, Producto, CV, GV, TotalVar, PVP, Margen, Pond, MargenPond, PEUnits, PEVentas]
-        const filteredCells = [
+        bepBody.push([
             cells[1], // Producto
-            cells[7] + '%', // Ponderación
-            cells[6], // Margen Contrib.
-            cells[9], // PE Unidades
-            cells[10] // PE Ventas
-        ];
-        bepBody.push(filteredCells);
+            cells[2], // C. Var
+            cells[3], // G. Var
+            cells[4], // T. Var
+            cells[5], // PVP
+            cells[6], // M. Contrib
+            cells[7] + '%', // Pond
+            cells[8], // M. Pond
+            cells[9], // PE (U)
+            cells[10] // PE ($)
+        ]);
     });
 
     doc.autoTable({
         startY: currentY + 5,
-        head: [['Producto', 'Ponderación', 'Margen Contrib.', 'PE (Unidades)', 'PE (Ventas $)']],
+        head: [['Producto', 'C. Var', 'G. Var', 'T. Var', 'PVP', 'M. Cont', 'Pond', 'M. Pond', 'PE (U)', 'PE ($)']],
         body: bepBody,
         theme: 'grid',
-        headStyles: { fillColor: primaryColor }
+        headStyles: { fillColor: primaryColor, fontSize: 8 },
+        styles: { fontSize: 7 }
     });
 
-    // Resumen Global de PE
-    const resBEPMoney = document.getElementById('resBEPMoney');
-    const resTotalWeightedMargin = document.getElementById('resTotalWeightedMargin');
-    
-    const globalBESummary = [
-        ["Ventas Totales en Equilibrio", resBEPMoney ? resBEPMoney.textContent : "$0.00"],
-        ["Margen de Contribución Ponderado", resTotalWeightedMargin ? resTotalWeightedMargin.textContent : "$0.00"]
+    // Resumen de PE
+    const bepSummary = [
+        ["Total Costos/Gastos Fijos", document.getElementById('resTotalFixed')?.textContent || "$0.00"],
+        ["Total Ponderación", document.getElementById('resTotalWeight')?.textContent || "0%"],
+        ["Margen de Contribución Ponderado Total", document.getElementById('resTotalWeightedMargin')?.textContent || "$0.00"],
+        ["Punto de Equilibrio (Unidades Totales)", document.getElementById('resBEPUnits')?.textContent || "0"],
+        ["Punto de Equilibrio (Dinero)", document.getElementById('resBEPMoney')?.textContent || "$0.00"]
     ];
 
     doc.autoTable({
         startY: doc.lastAutoTable.finalY + 5,
-        body: globalBESummary,
+        body: bepSummary,
         theme: 'plain',
-        styles: { fontStyle: 'bold' },
+        styles: { fontStyle: 'bold', fontSize: 9 },
         columnStyles: { 0: { cellWidth: 100 } }
     });
 
     doc.addPage();
     currentY = 20;
 
-    // --- SECCIÓN 4: SIMULACIÓN DE PROYECCIÓN ---
-    doc.text("4. SIMULACIÓN DE PROYECCIÓN Y RENTABILIDAD", 14, currentY);
+    // --- SECCIÓN 4: ENTRADA DE UNIDADES PROYECTADAS ---
+    doc.text("4. ENTRADA DE UNIDADES PROYECTADAS", 14, currentY);
+
+    const inputProjBody = [];
+    document.querySelectorAll('#projInputBody tr').forEach(row => {
+        const cells = Array.from(row.querySelectorAll('td')).map(td => {
+            const input = td.querySelector('input');
+            return input ? input.value : td.textContent.trim();
+        });
+        inputProjBody.push(cells);
+    });
+
+    doc.autoTable({
+        startY: currentY + 5,
+        head: [['Producto', 'PVP ($)', 'PE Referencia', 'Unidades Proyectadas', 'Estado']],
+        body: inputProjBody,
+        theme: 'grid',
+        headStyles: { fillColor: primaryColor }
+    });
+
+    currentY = doc.lastAutoTable.finalY + 15;
+
+    // --- SECCIÓN 5: RESULTADOS DETALLADOS DE LA PROYECCIÓN ---
+    if (currentY > 230) { doc.addPage(); currentY = 20; }
+    doc.text("5. RESULTADOS DETALLADOS DE LA PROYECCIÓN", 14, currentY);
 
     const projBody = [];
     document.querySelectorAll('#projResultBody tr').forEach(row => {
@@ -700,40 +726,58 @@ app.generatePDF = function() {
 
     doc.autoTable({
         startY: currentY + 5,
-        head: [['Producto', 'Ingresos', 'Costos Var.', 'Gastos Var.', 'Costos Fijos', 'Alicuota G.F.', 'Inversión', 'Rentabilidad', 'ROI (%)', 'Margen (%)', 'Costo Adq.']],
+        head: [['Producto', 'Ingresos', 'C. Var', 'G. Var', 'C. Fijos', 'Alíc G.F', 'Inversión', 'Rentab.', 'ROI', 'Margen', 'C. Adq.']],
         body: projBody,
         theme: 'grid',
         headStyles: { fillColor: primaryColor, fontSize: 7 },
-        styles: { fontSize: 7 }
+        styles: { fontSize: 6.5 }
     });
 
-    // --- RESUMEN FINAL ---
-    doc.setFontSize(14);
-    doc.text("CONCLUSIONES GENERALES", 14, doc.lastAutoTable.finalY + 15);
-
-    const finalSummary = [
-        ["Ingresos Brutos Proyectados", document.getElementById('totalRevenueProj').textContent],
-        ["Inversión Total Operativa", document.getElementById('totalInvestmentProj').textContent],
-        ["UTILIDAD NETA ESTIMADA", document.getElementById('totalProfitProj').textContent],
-        ["RETORNO DE INVERSIÓN (ROI)", document.getElementById('totalROIProj').textContent],
-        ["MARGEN DE UTILIDAD SOBRE VENTAS", document.getElementById('totalMarginProj').textContent]
+    // Resumen de Proyección
+    const projSummary = [
+        ["Total Gastos Fijos (Asignados + Globales)", document.getElementById('totalFixedProj')?.textContent || "$0.00"],
+        ["Ingresos Brutos Totales", document.getElementById('totalRevenueProj')?.textContent || "$0.00"],
+        ["Total Inversión (Var + Fijo)", document.getElementById('totalInvestmentProj')?.textContent || "$0.00"],
+        ["Rentabilidad Total", document.getElementById('totalProfitProj')?.textContent || "$0.00"],
+        ["ROI Total (%)", document.getElementById('totalROIProj')?.textContent || "0.00%"],
+        ["Margen Total (%)", document.getElementById('totalMarginProj')?.textContent || "0.00%"]
     ];
 
     doc.autoTable({
-        startY: doc.lastAutoTable.finalY + 20,
+        startY: doc.lastAutoTable.finalY + 5,
+        body: projSummary,
+        theme: 'plain',
+        styles: { fontStyle: 'bold', fontSize: 9 },
+        columnStyles: { 0: { cellWidth: 100 } }
+    });
+
+    currentY = doc.lastAutoTable.finalY + 15;
+
+    // --- SECCIÓN 6: CONCLUSIONES GENERALES ---
+    if (currentY > 230) { doc.addPage(); currentY = 20; }
+    doc.text("6. CONCLUSIONES GENERALES", 14, currentY);
+
+    const finalSummary = [
+        ["UTILIDAD NETA ESTIMADA", document.getElementById('totalProfitProj')?.textContent || "$0.00"],
+        ["RETORNO DE INVERSIÓN (ROI)", document.getElementById('totalROIProj')?.textContent || "0.00%"],
+        ["MARGEN DE UTILIDAD SOBRE VENTAS", document.getElementById('totalMarginProj')?.textContent || "0.00%"]
+    ];
+
+    doc.autoTable({
+        startY: currentY + 5,
         body: finalSummary,
         theme: 'striped',
         styles: { fontSize: 10, cellPadding: 5 },
         columnStyles: { 0: { fontStyle: 'bold', cellWidth: 100 } }
     });
 
-    // Pie de página
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text("Este documento es un análisis financiero proyectado. Los resultados dependen del cumplimiento de las metas de ventas.", pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+    doc.text("Este documento es un análisis financiero proyectado. Instagram: @detras_del_balance", pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
 
     doc.save(`Informe_Financiero_DetrasDelBalance_${new Date().toISOString().slice(0,10)}.pdf`);
 };
+
 
 // --- Utils ---
 const sanitizeHTML = (str) => {
