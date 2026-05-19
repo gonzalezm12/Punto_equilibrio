@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Punto de Equilibrio Ponderado</title>
-    <link rel="icon" type="image/png" href="/assets/ICONO%202-C358ChnI.png">
+    <title>Calculadora de Punto de Equilibrio Ponderado | Detrás del Balance</title>
+    <meta name="description" content="Calculadora gratuita de Punto de Equilibrio Ponderado. Analiza múltiples productos, calcula alícuotas de gastos fijos y proyecta la rentabilidad de tu negocio.">
+    <link rel="canonical" href="https://detrasdelbalance.com/punto-de-equilibrio/">
     
     <!-- Open Graph / Social Media Preview -->
-    <meta property="og:title" content="Calculadora de Punto de Equilibrio Ponderado">
-    <meta property="og:description" content="Analiza tu punto de equilibrio y rentabilidad proyectada con nuestra herramienta profesional.">
-    <meta property="og:image" content="../ICONO 2.png">
+    <meta property="og:title" content="Calculadora de Punto de Equilibrio Ponderado | Detrás del Balance">
+    <meta property="og:description" content="Analiza tu punto de equilibrio y rentabilidad proyectada con nuestra herramienta profesional gratuita.">
+    <meta property="og:image" content="https://detrasdelbalance.com/src/LOGO-PRIMARIO.png">
     <meta property="og:type" content="website">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Calculadora Financiera">
+    <meta name="twitter:title" content="Calculadora Financiera Gratuita">
     <meta name="twitter:description" content="Analiza tu punto de equilibrio y rentabilidad proyectada con nuestra herramienta profesional.">
-    <meta name="twitter:image" content="../ICONO 2.png">
+    <meta name="twitter:image" content="https://detrasdelbalance.com/src/LOGO-PRIMARIO.png">
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -28,7 +29,7 @@
     <!-- jsPDF for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-  <script type="module" crossorigin src="/assets/punto-Ccf3z1jt.js"></script>
+  <script type="module" crossorigin src="/assets/punto-B-SUufFf.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/punto-CcKyvWdX.css">
 </head>
 <body>
@@ -135,10 +136,22 @@
                     <h2>Gastos Fijos Globales</h2>
                     <p class="text-muted">Ingrese gastos operativos que no dependen de un producto específico (ej. Arriendo, Nómina).</p>
 
-                    <div class="add-expense-form">
-                        <input type="text" id="gfgDesc" placeholder="Descripción del Gasto">
-                        <input type="number" id="gfgAmount" placeholder="Monto ($)" min="0" step="0.01">
-                        <button class="btn-action" onclick="app.addGlobalFixedExpense()">Agregar Gasto</button>
+                    <div class="import-actions">
+                        <div class="dropzone" id="gfgDropzone">
+                            <p>Arrastra y suelta tu archivo de Gastos Fijos (.xlsx/.csv) aquí o haz clic para subir.</p>
+                            <input type="file" id="gfgFileInput" accept=".xlsx, .xls, .csv" hidden>
+                        </div>
+                        <div class="manual-actions">
+                            <button class="btn-action" onclick="app.downloadGFGTemplate()">Descargar Plantilla Gastos Fijos</button>
+                            <div class="manual-product-form glass-panel mt-3">
+                                <h4>Agregar Manualmente</h4>
+                                <div class="form-group">
+                                    <input type="text" id="gfgDesc" placeholder="Descripción del Gasto" style="flex: 2; min-width: 0;">
+                                    <input type="number" id="gfgAmount" placeholder="Monto ($)" min="0" step="0.01" style="flex: 1; min-width: 0;">
+                                    <button class="btn-action" onclick="app.addGlobalFixedExpense()">Agregar</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -216,6 +229,13 @@
                             <div class="result-item important">
                                 <label>Punto de Equilibrio (Dinero):</label>
                                 <span class="highlight text-green" id="resBEPMoney">$0.00</span>
+                            </div>
+                            <div class="result-item important" id="verificationWrapper" style="grid-column: 1 / -1; border-top: 1px dashed rgba(60, 179, 113, 0.3); padding-top: 1rem; margin-top: 0.5rem; display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem;">
+                                <label style="font-size: 0.9rem; color: var(--text-muted);">Comprobación Matemática (Utilidad en PE = $0.00):</label>
+                                <div style="display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap;">
+                                    <span class="highlight text-green" id="resBEPVerification" style="font-size: 1.5rem;">$0.00</span>
+                                    <span id="resBEPVerificationFormula" style="font-size: 0.85rem; color: var(--text-muted); font-family: monospace;">$0.00 - $0.00 - $0.00 = $0.00</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -312,6 +332,32 @@
                                 <i class="fas fa-file-pdf"></i> Generar Informe PDF
                             </button>
                         </div>
+                    </div>
+                </div>
+            <!-- Sección Educativa para SEO -->
+            <section class="educational-content mt-5">
+                <div class="card glass-panel">
+                    <h2>¿Qué es el Punto de Equilibrio Ponderado?</h2>
+                    <p>El **punto de equilibrio** es el nivel de ventas en el que los ingresos totales son iguales a los costos totales, lo que significa que la empresa no tiene ni ganancias ni pérdidas. En empresas que venden múltiples productos, no basta con un cálculo simple; se requiere el **Punto de Equilibrio Ponderado**.</p>
+                    
+                    <div class="edu-grid mt-3">
+                        <div class="edu-item">
+                            <h3><i class="fas fa-layer-group"></i> Mezcla de Ventas</h3>
+                            <p>Considera la proporción en la que se vende cada producto. No todos los productos contribuyen igual a cubrir los costos fijos.</p>
+                        </div>
+                        <div class="edu-item">
+                            <h3><i class="fas fa-percentage"></i> Margen de Contribución</h3>
+                            <p>Es la diferencia entre el precio de venta y los costos variables. Indica cuánto queda de cada venta para cubrir los gastos fijos.</p>
+                        </div>
+                        <div class="edu-item">
+                            <h3><i class="fas fa-bullseye"></i> Toma de Decisiones</h3>
+                            <p>Conocer tu punto de equilibrio te permite fijar metas de ventas realistas y ajustar tu estrategia de precios para maximizar la rentabilidad.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="cta-box mt-4 text-center">
+                        <p>¿Necesitas ayuda para interpretar estos resultados o prefieres que expertos gestionen tu contabilidad?</p>
+                        <a href="https://wa.me/584123422609" class="btn-primary">Consultar con un Experto</a>
                     </div>
                 </div>
             </section>

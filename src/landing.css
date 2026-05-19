@@ -5,7 +5,7 @@
     --bg-darker: #020617;
     --bg-soft: #1e293b;
     --text-main: #f8fafc;
-    --text-muted: #94a3b8;
+    --text-muted: #cbd5e1; /* Increased brightness from #94a3b8 for better contrast */
     --accent: #22c55e;
     --premium-orange: #f97316; /* Academia Apis Orange */
     --premium-orange-light: #fb923c;
@@ -107,7 +107,7 @@ h1, h2, h3, .btn-primary {
 .powered-by {
     font-size: 0.8rem;
     color: var(--text-muted);
-    opacity: 0.7;
+    opacity: 0.9;
     margin-top: 1rem;
     letter-spacing: 1px;
 }
@@ -795,9 +795,88 @@ h1, h2, h3, .btn-primary {
     
     .footer-container { grid-template-columns: 1fr; gap: 2rem; }
     
-    .floating-contacts {
-        bottom: 1rem;
-        right: 1rem;
+/* Service Pages Specific Styles */
+.service-page .navbar {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(15px);
+    padding: 1rem 0;
+}
+
+.hero-small {
+    padding: 160px 0 80px;
+    background: radial-gradient(circle at 10% 20%, rgba(60, 179, 113, 0.1) 0%, transparent 40%);
+    text-align: center;
+}
+
+.hero-small h1 {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+}
+
+.hero-small h1 span {
+    color: var(--primary);
+}
+
+.hero-small p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+}
+
+.service-detail {
+    padding: 80px 0;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 4rem;
+    align-items: center;
+}
+
+.detail-content h2 {
+    font-size: 2.2rem;
+    margin-bottom: 2rem;
+}
+
+.detail-content p {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+}
+
+.detail-image .glass-panel {
+    background: var(--bg-dark);
+    padding: 3rem;
+    border-radius: 30px;
+    border: 1px solid var(--glass-border);
+}
+
+.educational-content {
+    margin-top: 100px;
+}
+
+.edu-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+}
+
+.edu-item {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 2rem;
+    border-radius: 20px;
+}
+
+.edu-item i {
+    color: var(--primary);
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .hero-small h1 { font-size: 2.5rem; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .edu-grid { grid-template-columns: 1fr; }
+}
     }
     .float-btn {
         width: 50px;

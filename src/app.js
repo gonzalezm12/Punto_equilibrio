@@ -40,33 +40,67 @@ window.app = {};
 
 // --- Module 1: Excel Upload & Product Management ---
 function initDropzone() {
+    // Dropzone de Productos
     const dropzone = document.getElementById('excelDropzone');
     const fileInput = document.getElementById('fileInput');
 
-    dropzone.addEventListener('click', () => fileInput.click());
+    if (dropzone && fileInput) {
+        dropzone.addEventListener('click', () => fileInput.click());
 
-    dropzone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropzone.classList.add('dragover');
-    });
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
 
-    dropzone.addEventListener('dragleave', () => {
-        dropzone.classList.remove('dragover');
-    });
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
 
-    dropzone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropzone.classList.remove('dragover');
-        if (e.dataTransfer.files.length) {
-            handleFileUpload(e.dataTransfer.files[0]);
-        }
-    });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
 
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) {
-            handleFileUpload(e.target.files[0]);
-        }
-    });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+    }
+
+    // Dropzone de Gastos Fijos Globales
+    const gfgDropzone = document.getElementById('gfgDropzone');
+    const gfgFileInput = document.getElementById('gfgFileInput');
+
+    if (gfgDropzone && gfgFileInput) {
+        gfgDropzone.addEventListener('click', () => gfgFileInput.click());
+
+        gfgDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            gfgDropzone.classList.add('dragover');
+        });
+
+        gfgDropzone.addEventListener('dragleave', () => {
+            gfgDropzone.classList.remove('dragover');
+        });
+
+        gfgDropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            gfgDropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleGFGFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        gfgFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleGFGFileUpload(e.target.files[0]);
+            }
+        });
+    }
 }
 
 function handleFileUpload(file) {
@@ -76,20 +110,39 @@ function handleFileUpload(file) {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             
-            // Leer Hoja 1: Productos
             const sheet1Name = workbook.SheetNames[0];
             const productsData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet1Name], { header: 1 });
             
-            // Leer Hoja 2: Detalle_Costos (si existe)
-            let detailsData = null;
-            if (workbook.SheetNames.length > 1) {
-                const sheet2Name = workbook.SheetNames.find(n => n.toLowerCase().includes('detalle') || n.toLowerCase().includes('costo'));
-                if (sheet2Name) {
-                    detailsData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet2Name], { header: 1 });
+            // Detectar si la Hoja 1 tiene estructura unificada (contiene columnas de costo/gasto)
+            const clean = (str) => (str || '').toString().toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+            let isUnified = false;
+            // Buscar en las primeras 12 filas para ver si alguna fila contiene 'tipo' y ('monto' o 'valor')
+            for (let i = 0; i < Math.min(productsData.length, 12); i++) {
+                if (!productsData[i]) continue;
+                const row = productsData[i].map(c => clean(c));
+                const hasTipo = row.some(c => c === 'tipo' || c.includes('tipo ('));
+                const hasMonto = row.some(c => c === 'monto' || c === 'valor' || c === 'costo');
+                if (hasTipo && hasMonto) {
+                    isUnified = true;
+                    break;
                 }
             }
 
-            parseExcelData(productsData, detailsData);
+            if (isUnified) {
+                parseUnifiedExcelData(productsData);
+            } else {
+                // Formato antiguo (dos hojas)
+                let detailsData = null;
+                if (workbook.SheetNames.length > 1) {
+                    const sheet2Name = workbook.SheetNames.find(n => n.toLowerCase().includes('detalle') || n.toLowerCase().includes('costo'));
+                    if (sheet2Name) {
+                        detailsData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet2Name], { header: 1 });
+                    }
+                }
+                parseLegacyExcelData(productsData, detailsData);
+            }
         } catch (error) {
             console.error("Error reading file:", error);
             alert("Error al procesar el archivo. Asegúrate de usar la plantilla oficial.");
@@ -98,16 +151,136 @@ function handleFileUpload(file) {
     reader.readAsArrayBuffer(file);
 }
 
-function parseExcelData(productsData, detailsData) {
-    if (!productsData || productsData.length < 2) return;
+function parseUnifiedExcelData(sheetData) {
+    if (!sheetData || sheetData.length < 2) return;
 
-    // Función para limpiar texto (quitar tildes, espacios y minúsculas)
     const clean = (str) => (str || '').toString().toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-    // --- 1. Procesar Productos (Hoja 1) ---
+    // Buscar fila de cabecera
+    let headerRowIdx = -1;
+    for (let i = 0; i < sheetData.length; i++) {
+        if (!sheetData[i]) continue;
+        const row = sheetData[i].map(c => clean(c));
+        const hasCode = row.some(c => c === 'codigo' || c === 'codigo producto' || c === 'cod');
+        const hasName = row.some(c => c === 'nombre' || c === 'producto' || c === 'nom');
+        if (hasCode && hasName) {
+            headerRowIdx = i;
+            break;
+        }
+    }
+
+    if (headerRowIdx === -1) {
+        alert("No se encontró la fila de cabeceras en el archivo.");
+        return;
+    }
+
+    const headers = sheetData[headerRowIdx].map(h => clean(h));
+    const codeIdx = headers.findIndex(h => h.includes('cod'));
+    const nameIdx = headers.findIndex(h => h.includes('nom'));
+    const pvpIdx = headers.findIndex(h => h.includes('precio') || h.includes('pvp') || h.includes('venta'));
+    const typeIdx = headers.findIndex(h => h.includes('tipo'));
+    const descIdx = headers.findIndex(h => h.includes('desc'));
+    const amountIdx = headers.findIndex(h => h.includes('monto') || h.includes('valor') || h.includes('costo'));
+
+    let addedCount = 0;
+    let updatedCount = 0;
+
+    const tempProducts = {};
+    let lastValidProduct = null;
+
+    for (let i = headerRowIdx + 1; i < sheetData.length; i++) {
+        const row = sheetData[i];
+        if (!row || row.length === 0) continue;
+
+        let rawCode = codeIdx !== -1 && row[codeIdx] ? row[codeIdx].toString().trim() : '';
+        let nameStr = nameIdx !== -1 && row[nameIdx] ? row[nameIdx].toString().trim() : '';
+        let pvp = pvpIdx !== -1 ? parseFloat(row[pvpIdx]) || 0 : 0;
+
+        // Si el código está vacío pero venimos procesando un producto anterior, asociamos la línea al anterior
+        if (!rawCode && lastValidProduct) {
+            rawCode = lastValidProduct.code;
+            nameStr = nameStr || lastValidProduct.name;
+            pvp = pvp || lastValidProduct.pvp;
+        }
+
+        if (!rawCode) continue;
+
+        const code = rawCode.toUpperCase();
+        
+        let product = tempProducts[code];
+        if (!product) {
+            const existing = state.products.find(p => p.code.toUpperCase() === code);
+            if (existing) {
+                existing.cv = [];
+                existing.cf = [];
+                existing.gv = [];
+                if (nameStr) existing.name = nameStr;
+                if (pvp > 0) existing.pvp = pvp;
+                product = existing;
+                updatedCount++;
+            } else {
+                product = {
+                    id: generateId(),
+                    code: code,
+                    name: nameStr || `Producto ${code}`,
+                    cv: [], cf: [], gv: [],
+                    pvp: pvp,
+                    weight: 0,
+                    projectedUnits: 0,
+                    includedInBEP: true
+                };
+                addedCount++;
+            }
+            tempProducts[code] = product;
+        } else {
+            if (nameStr) product.name = nameStr;
+            if (pvp > 0) product.pvp = pvp;
+        }
+
+        lastValidProduct = product;
+
+        // Procesar detalle si existen columnas y valores válidos
+        if (typeIdx !== -1 && amountIdx !== -1) {
+            const rawType = clean(row[typeIdx]);
+            const desc = descIdx !== -1 && row[descIdx] ? row[descIdx].toString().trim() : 'Importado';
+            const amount = parseFloat(row[amountIdx]) || 0;
+
+            if (amount > 0) {
+                if (rawType === 'cv' || (rawType.includes('costo') && rawType.includes('variable'))) {
+                    product.cv.push({ desc, amount });
+                } else if (rawType === 'cf' || rawType.includes('fijo')) {
+                    product.cf.push({ desc, amount });
+                } else if (rawType === 'gv' || (rawType.includes('gasto') && rawType.includes('variable'))) {
+                    product.gv.push({ desc, amount });
+                }
+            }
+        }
+    }
+
+    // Guardar en state
+    Object.values(tempProducts).forEach(p => {
+        const idx = state.products.findIndex(existing => existing.id === p.id);
+        if (idx === -1) {
+            state.products.push(p);
+        } else {
+            state.products[idx] = p;
+        }
+    });
+
+    renderApp();
+    alert(`Importación completada: ${addedCount} nuevos, ${updatedCount} actualizados.`);
+}
+
+function parseLegacyExcelData(productsData, detailsData) {
+    if (!productsData || productsData.length < 2) return;
+
+    const clean = (str) => (str || '').toString().toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
     let headerRowIdx = -1;
     for (let i = 0; i < productsData.length; i++) {
+        if (!productsData[i]) continue;
         const row = productsData[i].map(c => clean(c));
         if (row.some(c => c.includes('cod')) || row.some(c => c.includes('nom'))) {
             headerRowIdx = i;
@@ -164,10 +337,10 @@ function parseExcelData(productsData, detailsData) {
         if (pvp > 0) targetProduct.pvp = pvp;
     }
 
-    // --- 2. Procesar Detalles (Hoja 2) ---
     if (detailsData && detailsData.length > 1) {
         let detHeaderIdx = -1;
         for (let i = 0; i < detailsData.length; i++) {
+            if (!detailsData[i]) continue;
             const row = detailsData[i].map(c => clean(c));
             if (row.some(c => c.includes('cod')) || row.some(c => c.includes('tipo'))) {
                 detHeaderIdx = i;
@@ -210,31 +383,112 @@ function parseExcelData(productsData, detailsData) {
 }
 
 app.downloadTemplate = () => {
-    // Hoja 1: Productos
-    const ws_products_data = [
-        ["Código", "Nombre", "Precio de Venta"],
-        ["PR001", "Producto de Ejemplo A", 100.00],
-        ["PR002", "Producto de Ejemplo B", 200.00]
+    const ws_data = [
+        ["Código", "Nombre", "Precio de Venta", "Tipo (CV / CF / GV)", "Descripción", "Monto"],
+        ["PR001", "Producto de Ejemplo A", 100.00, "CV", "Tela de Algodón", 25.00],
+        ["PR001", "Producto de Ejemplo A", 100.00, "CV", "Hilos y Botones", 5.50],
+        ["PR001", "Producto de Ejemplo A", 100.00, "CF", "Etiqueta Marca", 1.20],
+        ["PR002", "Producto de Ejemplo B", 200.00, "CV", "Cuero Sintético", 50.00],
+        ["PR002", "Producto de Ejemplo B", 200.00, "GV", "Comisión de Marketplace", 15.00]
     ];
-    const ws_products = XLSX.utils.aoa_to_sheet(ws_products_data);
 
-    // Hoja 2: Detalle_Costos
-    const ws_details_data = [
-        ["Código Producto", "Tipo (CV / CF / GV)", "Descripción", "Monto"],
-        ["PR001", "CV", "Tela de Algodón", 25.00],
-        ["PR001", "CV", "Hilos y Botones", 5.50],
-        ["PR001", "CF", "Etiqueta Marca", 1.20],
-        ["PR002", "CV", "Cuero Sintético", 50.00],
-        ["PR002", "GV", "Comisión de Marketplace", 15.00]
-    ];
-    const ws_details = XLSX.utils.aoa_to_sheet(ws_details_data);
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws_products, "Productos");
-    XLSX.utils.book_append_sheet(wb, ws_details, "Detalle_Costos");
+    XLSX.utils.book_append_sheet(wb, ws, "Productos");
 
-    XLSX.writeFile(wb, "Plantilla_Avanzada_Punto_Equilibrio.xlsx");
+    XLSX.writeFile(wb, "Plantilla_Punto_Equilibrio_DetrasDelBalance.xlsx");
 };
+
+app.downloadGFGTemplate = () => {
+    const ws_data = [
+        ["Descripción", "Monto"],
+        ["Alquiler de Local / Oficina", 1200.00],
+        ["Nómina Administrativa", 2500.00],
+        ["Servicios Públicos (Luz, Agua)", 150.00],
+        ["Servicio de Internet y Telefonía", 80.00],
+        ["Suscripciones de Software (SaaS)", 95.00],
+        ["Servicios Contables y Legales", 300.00]
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Gastos Fijos");
+
+    XLSX.writeFile(wb, "Plantilla_Gastos_Fijos_Globales_DetrasDelBalance.xlsx");
+};
+
+function handleGFGFileUpload(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            const sheet1Name = workbook.SheetNames[0];
+            const gfgData = XLSX.utils.sheet_to_json(workbook.Sheets[sheet1Name], { header: 1 });
+            
+            parseGFGExcelData(gfgData);
+        } catch (error) {
+            console.error("Error reading GFG file:", error);
+            alert("Error al procesar el archivo. Asegúrate de usar la plantilla oficial de Gastos Fijos.");
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function parseGFGExcelData(sheetData) {
+    if (!sheetData || sheetData.length < 2) return;
+
+    const clean = (str) => (str || '').toString().toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+    // Buscar fila de cabecera (debe contener descripción/monto)
+    let headerRowIdx = -1;
+    for (let i = 0; i < sheetData.length; i++) {
+        if (!sheetData[i]) continue;
+        const row = sheetData[i].map(c => clean(c));
+        const hasDesc = row.some(c => c === 'descripcion' || c === 'concepto' || c === 'detalle' || c === 'desc');
+        const hasMonto = row.some(c => c === 'monto' || c === 'valor' || c === 'costo' || c === 'importe');
+        if (hasDesc && hasMonto) {
+            headerRowIdx = i;
+            break;
+        }
+    }
+
+    if (headerRowIdx === -1) {
+        alert("No se encontró la fila de cabeceras en el archivo de Gastos Fijos (debe contener columnas como 'Descripción' y 'Monto').");
+        return;
+    }
+
+    const headers = sheetData[headerRowIdx].map(h => clean(h));
+    const descIdx = headers.findIndex(h => h.includes('desc') || h.includes('concepto') || h.includes('detalle'));
+    const amountIdx = headers.findIndex(h => h.includes('monto') || h.includes('valor') || h.includes('costo') || h.includes('importe'));
+
+    let addedCount = 0;
+
+    for (let i = headerRowIdx + 1; i < sheetData.length; i++) {
+        const row = sheetData[i];
+        if (!row || row.length === 0) continue;
+
+        const desc = descIdx !== -1 && row[descIdx] ? row[descIdx].toString().trim() : '';
+        const amount = amountIdx !== -1 ? parseFloat(row[amountIdx]) || 0 : 0;
+
+        if (!desc || amount <= 0) continue;
+
+        // Agregar al estado de gastos fijos globales
+        state.globalFixedExpenses.push({
+            id: generateId(),
+            desc: desc,
+            amount: amount
+        });
+        addedCount++;
+    }
+
+    renderApp();
+    alert(`Importación completada: se agregaron ${addedCount} Gastos Fijos Globales.`);
+}
 
 app.addManualProduct = () => {
     const codeInput = document.getElementById('manualCode');
@@ -343,7 +597,7 @@ app.updateProductBEPValue = (id, field, value) => {
     if (product) {
         let numValue = parseFloat(value) || 0;
         if (field === 'weight') {
-            numValue = numValue / 100; // Convertir de porcentaje a decimal (ej 50 -> 0.5)
+            numValue = Math.round((numValue / 100) * 10000) / 10000; // Redondear a 4 decimales en decimal (2 decimales en porcentaje)
         }
         product[field] = numValue;
         renderApp();
@@ -385,6 +639,7 @@ function renderBEPModule() {
     }
 
     let globalBepMoney = 0;
+    let totalVariablesAtPE = 0; // Costos variables totales en el volumen de punto de equilibrio
 
     // Segunda pasada: Renderizar tabla y calcular BEP por producto
     state.products.forEach(p => {
@@ -401,6 +656,7 @@ function renderBEPModule() {
             bepUnidades = globalBepUnits * p.weight;
             bepDinero = bepUnidades * p.pvp;
             globalBepMoney += bepDinero;
+            totalVariablesAtPE += bepUnidades * totalVariables;
         }
 
         const tr = document.createElement('tr');
@@ -412,7 +668,7 @@ function renderBEPModule() {
             <td data-label="Total Var.">${formatMoney(totalVariables)}</td>
             <td data-label="PVP ($)"><input type="number" value="${p.pvp || ''}" onchange="app.updateProductBEPValue('${p.id}', 'pvp', this.value)" placeholder="PVP" style="width: 80px;" min="0"></td>
             <td data-label="Margen Contrib." class="font-bold ${margin < 0 ? 'text-red-500' : ''}">${formatMoney(margin)}</td>
-            <td data-label="Ponderación (%)"><input type="number" value="${(p.weight * 100) || ''}" onchange="app.updateProductBEPValue('${p.id}', 'weight', this.value)" placeholder="%" style="width: 80px;" min="0" max="100"></td>
+            <td data-label="Ponderación (%)"><input type="number" value="${(p.weight * 100).toFixed(2)}" onchange="app.updateProductBEPValue('${p.id}', 'weight', this.value)" placeholder="0.00" style="width: 80px;" min="0" max="100" step="0.01"></td>
             <td data-label="M. Contrib. Pond." class="font-bold text-blue-500">${formatMoney(weightedMarginPerProduct)}</td>
             <td data-label="PE (Unidades)">${bepUnidades.toFixed(2)}</td>
             <td data-label="PE ($)">${formatMoney(bepDinero)}</td>
@@ -434,6 +690,15 @@ function renderBEPModule() {
     document.getElementById('resTotalWeightedMargin').textContent = formatMoney(totalWeightedMargin || 0);
     document.getElementById('resBEPUnits').textContent = (globalBepUnits || 0).toFixed(2);
     document.getElementById('resBEPMoney').textContent = formatMoney(globalBepMoney || 0);
+
+    // Calcular Comprobación de Punto de Equilibrio (Utilidad debe dar exactamente $0.00)
+    const verificationVal = globalBepMoney - totalFixedCosts - totalVariablesAtPE;
+    // Si la diferencia es minúscula (ruido de coma flotante), redondear a 0 exacto
+    const finalVerification = Math.abs(verificationVal) < 0.01 ? 0 : verificationVal;
+
+    document.getElementById('resBEPVerification').textContent = formatMoney(finalVerification);
+    document.getElementById('resBEPVerificationFormula').textContent = 
+        `${formatMoney(globalBepMoney)} (PE Dinero) - ${formatMoney(totalFixedCosts)} (Fijos) - ${formatMoney(totalVariablesAtPE)} (Variables) = ${formatMoney(finalVerification)}`;
 }
 
 
@@ -679,7 +944,8 @@ app.generatePDF = function() {
         ["Total Ponderación", document.getElementById('resTotalWeight')?.textContent || "0%"],
         ["Margen de Contribución Ponderado Total", document.getElementById('resTotalWeightedMargin')?.textContent || "$0.00"],
         ["Punto de Equilibrio (Unidades Totales)", document.getElementById('resBEPUnits')?.textContent || "0"],
-        ["Punto de Equilibrio (Dinero)", document.getElementById('resBEPMoney')?.textContent || "$0.00"]
+        ["Punto de Equilibrio (Dinero)", document.getElementById('resBEPMoney')?.textContent || "$0.00"],
+        ["Comprobación Matemática (Utilidad PE = $0.00)", document.getElementById('resBEPVerificationFormula')?.textContent || "$0.00"]
     ];
 
     doc.autoTable({
